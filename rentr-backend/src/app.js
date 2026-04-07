@@ -14,4 +14,16 @@ const authRoutes = require("./modules/auth/auth.routes");
 
 app.use("/api/auth", authRoutes);
 
-module.exports = app;   // export app to be used in server.js
+const authMiddleware = require("./middleware/auth/middleware");
+app.get("api/profile", authMiddleware, (req, res) => {
+  res.json({
+    message: "This is a protected route",
+    user: req.user
+  });
+});
+
+const userRoutes = require("./modules/user/user.routes");
+
+app.use("/api", userRoutes);
+
+module.exports = app; // export app to be used in server.js
