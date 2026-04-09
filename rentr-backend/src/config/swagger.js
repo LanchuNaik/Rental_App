@@ -13,6 +13,16 @@ const options = {
         url: "http://localhost:5001",
       },
     ],
+    components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "JWT token for authentication"
+        }
+      }
+    }
   },
   apis: ["./src/modules/**/*.js"], // scans your files
 };
