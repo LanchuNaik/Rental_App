@@ -30,4 +30,8 @@ const userRoutes = require("./modules/user/user.routes");
 
 app.use("/api", userRoutes);
 
+const itemRoutes = require("./modules/item/item.routes");
+
+app.use("/api/items", itemRoutes);
+
 module.exports = app; // export app to be used in server.js
