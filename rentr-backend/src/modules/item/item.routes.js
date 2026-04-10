@@ -45,6 +45,21 @@
  *   get:
  *     summary: Get all items
  *     tags: [Item]
+ *     parameters:
+ *       - in: query
+ *         name: minPrice
+ *         required: false
+ *         description: Minimum price filter
+ *         schema:
+ *           type: number
+ *           example: 500
+ *       - in: query
+ *         name: maxPrice
+ *         required: false
+ *         description: Maximum price filter
+ *         schema:
+ *           type: number
+ *           example: 2000
  *     responses:
  *       200:
  *         description: Successfully retrieved all items

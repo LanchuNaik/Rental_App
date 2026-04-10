@@ -25,13 +25,23 @@ const createItem = async (req, res) => {
 
 const getItems = async (req, res) => {
   try {
-    const items = await Item.find().populate("owner", "email");
+    const { minPrice, maxPrice } = req.query;
+
+    let filter = {};
+
+    if (minPrice || maxPrice) {
+      filter.price = {};
+
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    const items = await Item.find(filter).populate("owner", "email");
 
     res.json(items);
+
   } catch (error) {
-    res.status(500).json({
-      error: error.message,
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
