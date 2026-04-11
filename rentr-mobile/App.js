@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import SplashScreen from './src/screens/auth/SplashScreen';
 import WelcomeScreen from './src/screens/auth/WelcomeScreen';
+import LoginScreen from './src/screens/auth/LoginScreen';
 import { colors, typography } from './src/theme/theme';
 
 // Simple "screen" state — we'll replace this with React Navigation later
@@ -16,11 +17,24 @@ export default function App() {
     return <WelcomeScreen onFinish={() => setCurrentScreen('login')} />;
   }
 
-  // Placeholder for next screen (Login — coming next)
+  if (currentScreen === 'login') {
+    return (
+      <LoginScreen
+        onLogin={(user) => {
+          console.log('Logged in:', user);
+          setCurrentScreen('home');
+        }}
+        onGoToRegister={() => setCurrentScreen('register')}
+        onForgotPassword={() => setCurrentScreen('forgot')}
+      />
+    );
+  }
+
+  // Placeholder for next screens
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome finished!</Text>
-      <Text style={styles.subtext}>Next: Login screen</Text>
+      <Text style={styles.text}>Next: {currentScreen}</Text>
+      <Text style={styles.subtext}>Coming soon...</Text>
     </View>
   );
 }
