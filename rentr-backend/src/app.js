@@ -15,7 +15,6 @@ app.get("/", (req, res) => { // test route
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const authRoutes = require("./modules/auth/auth.routes");
-
 app.use("/api/auth", authRoutes);
 
 const authMiddleware = require("./middleware/auth/middleware");
@@ -27,11 +26,12 @@ app.get("api/profile", authMiddleware, (req, res) => {
 });
 
 const userRoutes = require("./modules/user/user.routes");
-
 app.use("/api", userRoutes);
 
 const itemRoutes = require("./modules/item/item.routes");
-
 app.use("/api/items", itemRoutes);
+
+const bookingRoutes = require("./modules/booking/booking.routes");
+app.use("/api/bookings", bookingRoutes);
 
 module.exports = app; // export app to be used in server.js
