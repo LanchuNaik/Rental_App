@@ -1,23 +1,26 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import SplashScreen from './src/screens/auth/SplashScreen';
+import WelcomeScreen from './src/screens/auth/WelcomeScreen';
 import { colors, typography } from './src/theme/theme';
 
+// Simple "screen" state — we'll replace this with React Navigation later
 export default function App() {
-  // Track if splash screen is still showing
-  const [showSplash, setShowSplash] = useState(true);
+  const [currentScreen, setCurrentScreen] = useState('splash');
 
-  // While splash is active, show it
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  if (currentScreen === 'splash') {
+    return <SplashScreen onFinish={() => setCurrentScreen('welcome')} />;
   }
 
-  // After splash finishes — placeholder for next screen
-  // (We'll replace this with the Welcome screen in the next step)
+  if (currentScreen === 'welcome') {
+    return <WelcomeScreen onFinish={() => setCurrentScreen('login')} />;
+  }
+
+  // Placeholder for next screen (Login — coming next)
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Splash finished!</Text>
-      <Text style={styles.subtext}>Next: Welcome screen</Text>
+      <Text style={styles.text}>Welcome finished!</Text>
+      <Text style={styles.subtext}>Next: Login screen</Text>
     </View>
   );
 }
