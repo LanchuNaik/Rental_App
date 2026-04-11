@@ -60,6 +60,13 @@
  *         schema:
  *           type: number
  *           example: 2000
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         description: Search items by title (case-insensitive)
+ *         schema:
+ *           type: string
+ *           example: apartment
  *     responses:
  *       200:
  *         description: Successfully retrieved all items

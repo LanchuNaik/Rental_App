@@ -25,7 +25,7 @@ const createItem = async (req, res) => {
 
 const getItems = async (req, res) => {
   try {
-    const { minPrice, maxPrice } = req.query;
+    const { minPrice, maxPrice ,search } = req.query;
 
     let filter = {};
 
@@ -34,6 +34,13 @@ const getItems = async (req, res) => {
 
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+    
+    if (search){
+      filter.title={
+        $regex: search,
+        $options: "i",
+      }
     }
 
     const items = await Item.find(filter).populate("owner", "email");
