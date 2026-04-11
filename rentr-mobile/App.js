@@ -1,40 +1,42 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import SplashScreen from './src/screens/auth/SplashScreen';
-import WelcomeScreen from './src/screens/auth/WelcomeScreen';
-import LoginScreen from './src/screens/auth/LoginScreen';
+import SplashScreen        from './src/screens/auth/SplashScreen';
+import WelcomeScreen       from './src/screens/auth/WelcomeScreen';
+import LoginScreen         from './src/screens/auth/LoginScreen';
+import RegisterScreen      from './src/screens/auth/RegisterScreen';
+import RolePickerScreen    from './src/screens/auth/RolePickerScreen';
+import ForgotPasswordScreen from './src/screens/auth/ForgotPasswordScreen';
+import ResetPasswordScreen from './src/screens/auth/ResetPasswordScreen';
 import { colors, typography } from './src/theme/theme';
 
-// Simple "screen" state — we'll replace this with React Navigation later
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth flow:
+//   splash → welcome → login ──────────────→ home (placeholder)
+//                          ↓                ↑
+//                       register → rolePicker
+//                          ↓
+//                    forgotPassword → resetPassword → login
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('splash');
+  const [screen, setScreen] = useState('splash');
 
-  if (currentScreen === 'splash') {
-    return <SplashScreen onFinish={() => setCurrentScreen('welcome')} />;
-  }
+  const go = (name) => setScreen(name);
 
-  if (currentScreen === 'welcome') {
-    return <WelcomeScreen onFinish={() => setCurrentScreen('login')} />;
-  }
+  if (screen === 'splash')         return <SplashScreen           onFinish={() => go('welcome')} />;
+  if (screen === 'welcome')        return <WelcomeScreen          onFinish={() => go('login')} />;
+  if (screen === 'login')          return <LoginScreen            onLogin={() => go('home')}         onGoToRegister={() => go('register')} onForgotPassword={() => go('forgot')} />;
+  if (screen === 'register')       return <RegisterScreen         onRegister={() => go('rolePicker')} onGoToLogin={() => go('login')} />;
+  if (screen === 'rolePicker')     return <RolePickerScreen       onRoleSelected={() => go('home')} />;
+  if (screen === 'forgot')         return <ForgotPasswordScreen   onBack={() => go('login')}         onEmailSent={() => go('reset')} />;
+  if (screen === 'reset')          return <ResetPasswordScreen    onBack={() => go('forgot')}        onSuccess={() => go('login')} />;
 
-  if (currentScreen === 'login') {
-    return (
-      <LoginScreen
-        onLogin={(user) => {
-          console.log('Logged in:', user);
-          setCurrentScreen('home');
-        }}
-        onGoToRegister={() => setCurrentScreen('register')}
-        onForgotPassword={() => setCurrentScreen('forgot')}
-      />
-    );
-  }
-
-  // Placeholder for next screens
+  // ── Placeholder: all auth done, main app next ─────────────────────────────
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Next: {currentScreen}</Text>
-      <Text style={styles.subtext}>Coming soon...</Text>
+      <Text style={styles.emoji}>🎉</Text>
+      <Text style={styles.title}>Auth complete!</Text>
+      <Text style={styles.subtitle}>Next: Main app with bottom tabs</Text>
     </View>
   );
 }
@@ -45,14 +47,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 24,
   },
-  text: {
+  emoji: { fontSize: 48, marginBottom: 16 },
+  title: {
     ...typography.h2,
     color: colors.textPrimary,
+    marginBottom: 8,
   },
-  subtext: {
+  subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    marginTop: 8,
+    textAlign: 'center',
   },
 });
