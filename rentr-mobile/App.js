@@ -1,18 +1,23 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography, radius } from './src/theme/theme';
+import { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import SplashScreen from './src/screens/auth/SplashScreen';
+import { colors, typography } from './src/theme/theme';
 
 export default function App() {
+  // Track if splash screen is still showing
+  const [showSplash, setShowSplash] = useState(true);
+
+  // While splash is active, show it
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  // After splash finishes — placeholder for next screen
+  // (We'll replace this with the Welcome screen in the next step)
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Rentr</Text>
-      <Text style={styles.subtitle}>Theme is working!</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.cardText}>This is a themed card</Text>
-      </View>
-
-      <StatusBar style="light" />
+      <Text style={styles.text}>Splash finished!</Text>
+      <Text style={styles.subtext}>Next: Welcome screen</Text>
     </View>
   );
 }
@@ -20,30 +25,17 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
   },
-  title: {
-    ...typography.h1,
-    color: colors.textInverse,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.primaryLight,
-    marginBottom: spacing.xxl,
-  },
-  card: {
-    backgroundColor: colors.background,
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    width: '100%',
-  },
-  cardText: {
-    ...typography.h3,
+  text: {
+    ...typography.h2,
     color: colors.textPrimary,
-    textAlign: 'center',
+  },
+  subtext: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: 8,
   },
 });
