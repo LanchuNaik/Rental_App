@@ -6,6 +6,14 @@ const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Input validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, and password are required",
+      });
+    }
+
     // 🔐 hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -16,12 +24,18 @@ const signup = async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: "User created successfully",
-      user
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      }
     });
 
   } catch (error) {
     res.status(500).json({
+      success: false,
       error: error.message
     });
   }
@@ -31,11 +45,20 @@ const login = async (req, res)=>{
   try{
       const {email,password} =req.body;
   
+    // Input validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
     // 1. check if user exists
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(400).json({
+        success: false,
         message: "User not found"
       });
     }
@@ -45,6 +68,7 @@ const login = async (req, res)=>{
 
     if (!isMatch) {
       return res.status(400).json({
+        success: false,
         message: "Invalid password"
       });
     }
@@ -58,12 +82,21 @@ const login = async (req, res)=>{
 
     // 3. success
     res.json({
+      success: true,
       message: "Login successful",
-      token
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        }
+      }
     });
 
   } catch (error) {
     res.status(500).json({
+      success: false,
       error: error.message
     });
   }

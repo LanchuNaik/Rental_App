@@ -4,6 +4,21 @@ const createItem = async (req, res) => {
   try {
     const { title, description, price } = req.body;
 
+    // Input validation
+    if (!title || !description || !price) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, description, and price are required",
+      });
+    }
+
+    if (price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Price must be greater than 0",
+      });
+    }
+
     const item = await Item.create({
       title,
       description,
@@ -12,12 +27,14 @@ const createItem = async (req, res) => {
     });
 
     res.status(201).json({
+      success: true,
       message: "Item created successfully",
-      item,
+      data: item,
     });
 
   } catch (error) {
     res.status(500).json({
+      success: false,
       error: error.message,
     });
   }
@@ -53,16 +70,29 @@ const getItems = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
+    // Get total count of items matching filter
+    const total = await Item.countDocuments(filter);
+
     const items = await Item.find(filter)
       .sort(setOption)
       .skip(skip)
       .limit(limit)
       .populate("owner", "email");
 
-    res.json(items);
+    res.json({
+      success: true,
+      total,
+      page,
+      limit,
+      count: items.length,
+      data: items,
+    });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
@@ -72,13 +102,20 @@ const getItemById = async (req, res) => {
 
     if (!item) {
       return res.status(404).json({
+        success: false,
         message: "Item not found",
       });
     }
 
-    res.json(item);
+    res.json({
+      success: true,
+      data: item,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
@@ -87,12 +124,18 @@ const updateItem = async (req, res) => {
     const item = await Item.findById(req.params.id);
 
     if (!item) {
-      return res.status(404).json({ message: "Item not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
     }
 
-    // Optional: check owner
+    // Check owner authorization
     if (item.owner.toString() !== req.user.userId) {
-      return res.status(403).json({ message: "Unauthorized" });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     const updatedItem = await Item.findByIdAndUpdate(
@@ -102,12 +145,16 @@ const updateItem = async (req, res) => {
     );
 
     res.json({
+      success: true,
       message: "Item updated successfully",
-      updatedItem,
+      data: updatedItem,
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
@@ -116,36 +163,50 @@ const deleteItem = async (req, res) => {
     const item = await Item.findById(req.params.id);
 
     if (!item) {
-      return res.status(404).json({ message: "Item not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
     }
 
     if (item.owner.toString() !== req.user.userId) {
-      return res.status(404).json({
-        message: "Unauthorized"
-      })
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
     await Item.findByIdAndDelete(req.params.id);
 
     res.json({
+      success: true,
       message: "Item deleted successfully",
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 }
-
 
 const getMyItems = async (req, res) => {
   try {
     const items = await Item.find({
       owner: req.user.userId,
     });
-    res.json(items);
+    res.json({
+      success: true,
+      count: items.length,
+      data: items,
+    });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
