@@ -67,6 +67,27 @@
  *         schema:
  *           type: string
  *           example: apartment
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         description: Page number for pagination (default is 1)
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Number of items per page (default is 5)
+ *         schema:
+ *           type: integer
+ *           example: 5
+ *       - in: query
+ *         name: sort
+ *         required: false
+ *         description: Sort field (prefix with - for descending, e.g., -price for descending price)
+ *         schema:
+ *           type: string
+ *           example: price
  *     responses:
  *       200:
  *         description: Successfully retrieved all items

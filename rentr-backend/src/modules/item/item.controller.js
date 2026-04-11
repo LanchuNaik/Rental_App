@@ -25,7 +25,7 @@ const createItem = async (req, res) => {
 
 const getItems = async (req, res) => {
   try {
-    const { minPrice, maxPrice ,search } = req.query;
+    const { minPrice, maxPrice, search, sort } = req.query;
 
     let filter = {};
 
@@ -35,15 +35,29 @@ const getItems = async (req, res) => {
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
-    
-    if (search){
-      filter.title={
+
+    if (search) {
+      filter.title = {
         $regex: search,
         $options: "i",
       }
     }
 
-    const items = await Item.find(filter).populate("owner", "email");
+    let setOption = {};
+    if (sort) {
+      setOption[sort.replace("-", "")] = sort.startsWith("-") ? -1 : 1;
+    }
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
+
+    const skip = (page - 1) * limit;
+
+    const items = await Item.find(filter)
+      .sort(setOption)
+      .skip(skip)
+      .limit(limit)
+      .populate("owner", "email");
 
     res.json(items);
 
@@ -101,38 +115,38 @@ const deleteItem = async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
 
-    if (!item){
-      return res.status(404).json({message: "Item not found"});
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
     }
 
-    if(item.owner.toString()!== req.user.userId){
+    if (item.owner.toString() !== req.user.userId) {
       return res.status(404).json({
-        message :"Unauthorized"
+        message: "Unauthorized"
       })
     }
 
     await Item.findByIdAndDelete(req.params.id);
-     
+
     res.json({
       message: "Item deleted successfully",
     });
 
-  }catch(error){
-    res.status(500).json({error: error.message});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 }
 
 
 const getMyItems = async (req, res) => {
-  try{
+  try {
     const items = await Item.find({
       owner: req.user.userId,
     });
     res.json(items);
 
-  }catch(error){
-    res.status(500).json({error: error.message});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = { createItem, getItems, getItemById , updateItem, deleteItem, getMyItems};
+module.exports = { createItem, getItems, getItemById, updateItem, deleteItem, getMyItems };
