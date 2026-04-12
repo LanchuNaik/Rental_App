@@ -7,7 +7,7 @@ const {
   acceptBooking,
 } = require("./booking.controller");
 
-const authMiddleware = require("../../middleware/auth.middleware");
+const authMiddleware = require("../../middleware/auth/middleware");
 
 /**
  * @swagger
