@@ -1,63 +1,46 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import SplashScreen        from './src/screens/auth/SplashScreen';
-import WelcomeScreen       from './src/screens/auth/WelcomeScreen';
-import LoginScreen         from './src/screens/auth/LoginScreen';
-import RegisterScreen      from './src/screens/auth/RegisterScreen';
-import RolePickerScreen    from './src/screens/auth/RolePickerScreen';
-import ForgotPasswordScreen from './src/screens/auth/ForgotPasswordScreen';
-import ResetPasswordScreen from './src/screens/auth/ResetPasswordScreen';
-import { colors, typography } from './src/theme/theme';
+// ============================================
+// App.js — Root of the entire application
+// ============================================
+// HOW THIS WORKS (beginner explanation):
+//
+// NavigationContainer → the ROOT wrapper. Manages the navigation state
+//   (which screen is active, history stack, etc.)
+//   Every app using React Navigation MUST have exactly ONE NavigationContainer.
+//
+// AppNavigator → our custom navigator (AppNavigator.js) that decides:
+//   - if NOT logged in → show AuthStack (Splash, Login, Register, etc.)
+//   - if logged in → show MainTabs (Home, Browse, Bookings, Profile)
+//
+// isLoggedIn state → toggled when user successfully logs in.
+// In a real app this comes from AsyncStorage (saved JWT token).
+// ============================================
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Auth flow:
-//   splash → welcome → login ──────────────→ home (placeholder)
-//                          ↓                ↑
-//                       register → rolePicker
-//                          ↓
-//                    forgotPassword → resetPassword → login
-// ─────────────────────────────────────────────────────────────────────────────
+import { useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
-  const [screen, setScreen] = useState('splash');
+  // This controls which navigator is shown: Auth or Main
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const go = (name) => setScreen(name);
-
-  if (screen === 'splash')         return <SplashScreen           onFinish={() => go('welcome')} />;
-  if (screen === 'welcome')        return <WelcomeScreen          onFinish={() => go('login')} />;
-  if (screen === 'login')          return <LoginScreen            onLogin={() => go('home')}         onGoToRegister={() => go('register')} onForgotPassword={() => go('forgot')} />;
-  if (screen === 'register')       return <RegisterScreen         onRegister={() => go('rolePicker')} onGoToLogin={() => go('login')} />;
-  if (screen === 'rolePicker')     return <RolePickerScreen       onRoleSelected={() => go('home')} />;
-  if (screen === 'forgot')         return <ForgotPasswordScreen   onBack={() => go('login')}         onEmailSent={() => go('reset')} />;
-  if (screen === 'reset')          return <ResetPasswordScreen    onBack={() => go('forgot')}        onSuccess={() => go('login')} />;
-
-  // ── Placeholder: all auth done, main app next ─────────────────────────────
   return (
-    <View style={styles.container}>
-      <Text style={styles.emoji}>🎉</Text>
-      <Text style={styles.title}>Auth complete!</Text>
-      <Text style={styles.subtitle}>Next: Main app with bottom tabs</Text>
-    </View>
+    // SafeAreaProvider must wrap everything — used by react-native-safe-area-context
+    <SafeAreaProvider>
+      {/*
+        NavigationContainer:
+        - Wraps the entire navigation tree
+        - Must be at the very top, wrapping all navigators
+        - onReady fires when navigation is ready (useful for analytics)
+      */}
+      <NavigationContainer>
+        <AppNavigator
+          isLoggedIn={isLoggedIn}
+          // This callback is passed deep into auth screens (Login, RolePicker)
+          // When called → flips isLoggedIn → NavigationContainer re-renders → shows MainTabs
+          onLoginSuccess={() => setIsLoggedIn(true)}
+        />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  emoji: { fontSize: 48, marginBottom: 16 },
-  title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-});
