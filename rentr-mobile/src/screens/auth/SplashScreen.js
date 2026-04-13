@@ -1,44 +1,40 @@
 // ============================================
 // Splash Screen
 // ============================================
-// The first screen users see when opening the app.
-// Shows the Rentr logo on a gradient background for ~2.5 seconds,
-// then automatically moves to the Welcome screen.
+// NAVIGATION NOTE (beginner):
+// Every screen inside a Stack Navigator automatically receives
+// a `navigation` prop from React Navigation.
+// navigation.navigate('ScreenName') → go to that screen
+// navigation.replace('ScreenName')  → go AND remove current from stack
+//                                     (so back button won't return here)
+// We use replace() on Splash so the user can't go "back" to it.
 // ============================================
 
 import { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  StatusBar,
-} from 'react-native';
+import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 
-export default function SplashScreen({ onFinish }) {
-  // Track which loading dot is "active" — cycles 0 → 1 → 2 → 0 ...
+export default function SplashScreen({ navigation }) {
   const [activeDot, setActiveDot] = useState(0);
 
   useEffect(() => {
-    // Cycle the loading dots every 400ms
     const dotInterval = setInterval(() => {
       setActiveDot((prev) => (prev + 1) % 3);
     }, 400);
 
-    // After 2.5 seconds, call onFinish (moves to next screen later)
     const timer = setTimeout(() => {
-      if (onFinish) onFinish();
+      // replace() so back button won't come back to Splash
+      navigation.replace('Welcome');
     }, 2500);
 
-    // Cleanup — runs when screen unmounts, prevents memory leaks
     return () => {
       clearInterval(dotInterval);
       clearTimeout(timer);
     };
-  }, [onFinish]);
+  }, [navigation]);
 
   return (
     <LinearGradient
@@ -49,32 +45,19 @@ export default function SplashScreen({ onFinish }) {
     >
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
-        {/* ------- Top spacer pushes content to middle ------- */}
         <View style={styles.spacer} />
-
-        {/* ------- Main content (logo + name + tagline) ------- */}
         <View style={styles.content}>
-          {/* Logo circle */}
           <View style={styles.logoCircle}>
             <Ionicons name="cube" size={56} color={colors.primary} />
           </View>
-
-          {/* App name */}
           <Text style={styles.appName}>Rentr</Text>
-
-          {/* Tagline */}
           <Text style={styles.tagline}>Rent anything, anywhere</Text>
         </View>
-
-        {/* ------- Loading dots at the bottom ------- */}
         <View style={styles.dotsContainer}>
           {[0, 1, 2].map((index) => (
             <View
               key={index}
-              style={[
-                styles.dot,
-                activeDot === index && styles.dotActive,
-              ]}
+              style={[styles.dot, activeDot === index && styles.dotActive]}
             />
           ))}
         </View>
@@ -83,60 +66,19 @@ export default function SplashScreen({ onFinish }) {
   );
 }
 
-// ============================================
-// Styles
-// ============================================
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xxxl,
-  },
-  spacer: {
-    // Empty view — pushes content down to center
-  },
-  content: {
-    alignItems: 'center',
-  },
+  gradient:      { flex: 1 },
+  safeArea:      { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xxxl },
+  spacer:        {},
+  content:       { alignItems: 'center' },
   logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: radius.full, // circular
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    ...shadows.large,
+    width: 120, height: 120, borderRadius: radius.full,
+    backgroundColor: colors.background, alignItems: 'center',
+    justifyContent: 'center', marginBottom: spacing.xl, ...shadows.large,
   },
-  appName: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.textInverse,
-    letterSpacing: -1,
-    marginBottom: spacing.sm,
-  },
-  tagline: {
-    ...typography.body,
-    color: colors.primaryLight,
-    letterSpacing: 0.5,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  dotActive: {
-    backgroundColor: colors.background,
-    width: 24, // active dot is wider (pill shape)
-  },
+  appName: { fontSize: 48, fontWeight: '800', color: colors.textInverse, letterSpacing: -1, marginBottom: spacing.sm },
+  tagline: { ...typography.body, color: colors.primaryLight, letterSpacing: 0.5 },
+  dotsContainer: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xl },
+  dot:       { width: 10, height: 10, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.3)' },
+  dotActive: { backgroundColor: colors.background, width: 24 },
 });
