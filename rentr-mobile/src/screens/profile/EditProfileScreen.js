@@ -1,0 +1,400 @@
+// ============================================
+// EditProfileScreen — Edit user profile form
+// ============================================
+
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Screen from '../../components/Screen';
+import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+
+export default function EditProfileScreen({ navigation }) {
+  const [fullName, setFullName] = useState('Jamie Doe');
+  const [bio, setBio] = useState('Outdoor enthusiast and photography lover based in San Francisco. I take great care of my gear!');
+  const [phone, setPhone] = useState('+1 (415) 555-0198');
+
+  const [focusedField, setFocusedField] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = () => {
+    if (!fullName.trim()) {
+      Alert.alert('Validation', 'Full name is required.');
+      return;
+    }
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      Alert.alert('Profile Updated', 'Your profile has been saved successfully.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }, 800);
+  };
+
+  const inputStyle = (field) => [
+    styles.input,
+    focusedField === field && styles.inputFocused,
+  ];
+
+  return (
+    <Screen>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <TouchableOpacity onPress={handleSave} disabled={saving}>
+          <Text style={[styles.saveHeaderBtn, saving && styles.saveHeaderBtnDisabled]}>
+            {saving ? 'Saving...' : 'Save'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+
+        {/* Avatar Edit */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitials}>JD</Text>
+            </View>
+            <TouchableOpacity style={styles.avatarEditOverlay}>
+              <Ionicons name="camera" size={18} color={colors.textInverse} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.avatarHint}>Tap to change photo</Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.formSection}>
+
+          {/* Full Name */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Full Name</Text>
+            <TextInput
+              style={inputStyle('name')}
+              value={fullName}
+              onChangeText={setFullName}
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="Enter your full name"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="words"
+              returnKeyType="next"
+            />
+          </View>
+
+          {/* Bio */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Bio</Text>
+            <TextInput
+              style={[inputStyle('bio'), styles.bioInput]}
+              value={bio}
+              onChangeText={setBio}
+              onFocus={() => setFocusedField('bio')}
+              onBlur={() => setFocusedField(null)}
+              placeholder="Tell renters a little about yourself..."
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={300}
+            />
+            <Text style={styles.bioCount}>{bio.length}/300</Text>
+          </View>
+
+          {/* Phone */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Phone Number</Text>
+            <View style={styles.phoneInputWrapper}>
+              <View style={[styles.phonePrefix, focusedField === 'phone' && styles.phonePrefixFocused]}>
+                <Ionicons name="call-outline" size={16} color={colors.textSecondary} />
+              </View>
+              <TextInput
+                style={[inputStyle('phone'), styles.phoneInput]}
+                value={phone}
+                onChangeText={setPhone}
+                onFocus={() => setFocusedField('phone')}
+                onBlur={() => setFocusedField(null)}
+                placeholder="+1 (555) 000-0000"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="phone-pad"
+                returnKeyType="done"
+              />
+            </View>
+            <Text style={styles.fieldHint}>Used for booking notifications only. Not publicly displayed.</Text>
+          </View>
+
+          {/* Email — read only */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Email</Text>
+            <View style={[styles.input, styles.inputDisabled]}>
+              <Text style={styles.inputDisabledText}>jamie.doe@email.com</Text>
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                <Text style={styles.verifiedText}>Verified</Text>
+              </View>
+            </View>
+            <Text style={styles.fieldHint}>Email address cannot be changed here.</Text>
+          </View>
+        </View>
+
+        {/* Verification Section */}
+        <View style={styles.verificationCard}>
+          <Text style={styles.verificationTitle}>Identity Verification</Text>
+          <Text style={styles.verificationBody}>
+            Verify your identity to build trust with renters and owners. Verified profiles get 3x more bookings.
+          </Text>
+          <TouchableOpacity style={styles.verifyBtn}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+            <Text style={styles.verifyBtnText}>Verify Identity</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[styles.saveBtn, saving && styles.saveBtnLoading]}
+          onPress={handleSave}
+          activeOpacity={0.85}
+          disabled={saving}
+        >
+          {saving ? (
+            <Text style={styles.saveBtnText}>Saving...</Text>
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={20} color={colors.textInverse} />
+              <Text style={styles.saveBtnText}>Save Changes</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={{ height: spacing.xl }} />
+      </ScrollView>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  saveHeaderBtn: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.primary,
+    paddingHorizontal: spacing.sm,
+  },
+  saveHeaderBtnDisabled: {
+    color: colors.textMuted,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.medium,
+  },
+  avatarInitials: {
+    ...typography.h2,
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
+  avatarEditOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  avatarHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  formSection: {
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    ...shadows.small,
+    gap: spacing.lg,
+  },
+  fieldGroup: {
+    gap: spacing.sm,
+  },
+  fieldLabel: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+  },
+  bioInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingTop: spacing.md,
+  },
+  bioCount: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginTop: -spacing.sm,
+  },
+  phoneInputWrapper: {
+    flexDirection: 'row',
+  },
+  phonePrefix: {
+    width: 48,
+    borderWidth: 1.5,
+    borderRightWidth: 0,
+    borderColor: colors.border,
+    borderTopLeftRadius: radius.md,
+    borderBottomLeftRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phonePrefixFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.background,
+  },
+  phoneInput: {
+    flex: 1,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+  },
+  inputDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    opacity: 0.7,
+  },
+  inputDisabledText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  verifiedText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  fieldHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    lineHeight: 16,
+  },
+  verificationCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  verificationTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  verificationBody: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    lineHeight: 20,
+  },
+  verifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  verifyBtnText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  saveBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    ...shadows.medium,
+  },
+  saveBtnLoading: {
+    backgroundColor: colors.primaryDark,
+  },
+  saveBtnText: {
+    ...typography.button,
+    color: colors.textInverse,
+  },
+});
