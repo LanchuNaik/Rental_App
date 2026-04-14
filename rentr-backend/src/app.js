@@ -7,6 +7,7 @@ const app = express(); // create express app
 
 app.use(cors()); // allow fe to send the request
 app.use(express.json()); // allow be to read json data from the request body
+app.use("/uploads", express.static("uploads")); // serve uploaded files (avatars etc.)
 
 app.get("/", (req, res) => { // test route
   res.send("API running 🚀");
@@ -16,14 +17,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const authRoutes = require("./modules/auth/auth.routes");
 app.use("/api/auth", authRoutes);
-
-const authMiddleware = require("./middleware/auth/middleware");
-app.get("api/profile", authMiddleware, (req, res) => {
-  res.json({
-    message: "This is a protected route",
-    user: req.user
-  });
-});
 
 const userRoutes = require("./modules/user/user.routes");
 app.use("/api", userRoutes);
