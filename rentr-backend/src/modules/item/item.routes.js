@@ -255,21 +255,55 @@
 
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
 
-const { createItem, getItems ,getItemById ,updateItem, deleteItem,getMyItems } = require("./item.controller");
-    const authMiddleware = require("../../middleware/auth/middleware");
+const authMiddleware = require("../../middleware/auth/middleware");
+const {
+  createItem, getItems, getItemById, updateItem, deleteItem, getMyItems,
+  getAvailability, saveItem, unsaveItem, getSavedItems, getNearbyItems,
+} = require("./item.controller");
 
-// protected route
-router.post("/", authMiddleware, createItem);
+// --- Multer setup for item images ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/items/");
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `item_${req.user.userId}_${Date.now()}${ext}`);
+  },
+});
 
-// public route
-router.get("/", getItems);
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error("Images only"), false);
+};
 
-router.get("/my", authMiddleware, getMyItems);
-router.get("/:id", getItemById);
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },  // 5MB per file
+});
 
-router.put("/:id", authMiddleware, updateItem);
+// --- Routes ---
 
-router.delete("/:id",authMiddleware ,deleteItem);
+// IMPORTANT: specific routes (/my, /saved, /nearby) must come BEFORE /:id
+// otherwise Express thinks "my", "saved", "nearby" are item IDs
+
+router.get("/saved",  authMiddleware, getSavedItems);   // GET saved items
+router.get("/nearby", getNearbyItems);                  // GET nearby items (public)
+router.get("/my",     authMiddleware, getMyItems);      // GET my listings
+
+router.post("/", authMiddleware, upload.array("images", 5), createItem);  // up to 5 images
+router.get("/",  getItems);
+
+router.get("/:id",              getItemById);
+router.put("/:id",  authMiddleware, updateItem);
+router.delete("/:id", authMiddleware, deleteItem);
+
+router.get("/:id/availability",       getAvailability);          // public
+router.post("/:id/save",   authMiddleware, saveItem);             // save item
+router.delete("/:id/save", authMiddleware, unsaveItem);           // unsave item
 
 module.exports = router;

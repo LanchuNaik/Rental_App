@@ -2,7 +2,7 @@ const Item = require("./item.model");
 
 const createItem = async (req, res) => {
   try {
-    const { title, description, price } = req.body;
+    const { title, description, price, category, latitude, longitude, address } = req.body;
 
     // Input validation
     if (!title || !description || !price) {
@@ -19,11 +19,21 @@ const createItem = async (req, res) => {
       });
     }
 
+    // req.files is an array of uploaded images (set by multer)
+    const images = req.files ? req.files.map((f) => f.path) : [];
+
     const item = await Item.create({
       title,
       description,
       price,
-      owner: req.user.userId, // from JWT
+      category: category || null,
+      images,
+      location: {
+        type: "Point",
+        coordinates: [Number(longitude) || 0, Number(latitude) || 0],
+        address: address || null,
+      },
+      owner: req.user.userId,
     });
 
     res.status(201).json({
@@ -210,4 +220,127 @@ const getMyItems = async (req, res) => {
   }
 };
 
-module.exports = { createItem, getItems, getItemById, updateItem, deleteItem, getMyItems };
+// GET /api/items/:id/availability
+// Returns dates that are already booked for this item
+const getAvailability = async (req, res) => {
+  try {
+    const Booking = require("../booking/booking.model");
+
+    // Find all active/confirmed/pending bookings for this item
+    const bookings = await Booking.find({
+      item: req.params.id,
+      status: { $in: ["pending", "confirmed", "active"] },
+    }).select("startDate endDate status");
+
+    // Return the booked date ranges — frontend uses these to block out dates on the calendar
+    res.json({ success: true, data: bookings });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// POST /api/items/:id/save — save/favourite an item
+const saveItem = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+
+    // Check if already saved
+    const alreadySaved = item.savedBy.includes(req.user.userId);
+    if (alreadySaved) {
+      return res.status(400).json({ success: false, message: "Item already saved" });
+    }
+
+    item.savedBy.push(req.user.userId);
+    await item.save();
+
+    res.json({ success: true, message: "Item saved" });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// DELETE /api/items/:id/save — unsave/unfavourite an item
+const unsaveItem = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+
+    // Remove user's ID from the savedBy array
+    item.savedBy = item.savedBy.filter(
+      (userId) => userId.toString() !== req.user.userId
+    );
+    await item.save();
+
+    res.json({ success: true, message: "Item removed from saved" });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// GET /api/items/saved — get all items saved by the logged-in user
+const getSavedItems = async (req, res) => {
+  try {
+    const items = await Item.find({ savedBy: req.user.userId })
+      .populate("owner", "name avatar");
+
+    res.json({ success: true, count: items.length, data: items });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// GET /api/items/nearby?lat=xx&lng=xx&radius=10
+// Returns items within a radius (in km) of a given location
+const getNearbyItems = async (req, res) => {
+  try {
+    const { lat, lng, radius = 10 } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ success: false, message: "lat and lng are required" });
+    }
+
+    const radiusInMeters = Number(radius) * 1000; // convert km to meters
+
+    const items = await Item.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [Number(lng), Number(lat)],  // MongoDB uses [longitude, latitude]
+          },
+          $maxDistance: radiusInMeters,
+        },
+      },
+    }).populate("owner", "name avatar");
+
+    res.json({ success: true, count: items.length, data: items });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = {
+  createItem,
+  getItems,
+  getItemById,
+  updateItem,
+  deleteItem,
+  getMyItems,
+  getAvailability,
+  saveItem,
+  unsaveItem,
+  getSavedItems,
+  getNearbyItems,
+};
