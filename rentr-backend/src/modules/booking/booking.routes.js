@@ -1,13 +1,42 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
 
+const authMiddleware = require("../../middleware/auth/middleware");
 const {
   createBooking,
   getMyBookings,
+  getBookingById,
+  getIncomingRequests,
   acceptBooking,
+  cancelBooking,
+  rejectBooking,
+  uploadPickupPhotos,
+  confirmReturn,
 } = require("./booking.controller");
 
-const authMiddleware = require("../../middleware/auth/middleware");
+// --- Multer setup for booking photos (pickup + return) ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/bookings/");
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `booking_${req.params.id}_${Date.now()}${ext}`);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error("Images only"), false);
+};
+
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 /**
  * @swagger
@@ -161,8 +190,17 @@ const authMiddleware = require("../../middleware/auth/middleware");
  *         description: Server error
  */
 
-router.post("/", authMiddleware, createBooking);
-router.get("/my", authMiddleware, getMyBookings);
-router.put("/:id/accept", authMiddleware, acceptBooking);
+// Specific named routes first — before /:id
+router.post("/",          authMiddleware, createBooking);
+router.get("/my",         authMiddleware, getMyBookings);
+router.get("/incoming",   authMiddleware, getIncomingRequests);
+
+// Single booking routes
+router.get("/:id",                authMiddleware, getBookingById);
+router.put("/:id/accept",         authMiddleware, acceptBooking);
+router.put("/:id/cancel",         authMiddleware, cancelBooking);
+router.put("/:id/reject",         authMiddleware, rejectBooking);
+router.put("/:id/pickup",         authMiddleware, upload.array("photos", 5), uploadPickupPhotos);
+router.put("/:id/return",         authMiddleware, upload.array("photos", 5), confirmReturn);
 
 module.exports = router;

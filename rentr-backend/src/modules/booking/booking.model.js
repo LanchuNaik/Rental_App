@@ -50,6 +50,24 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    // Photos taken at pickup — proof of item condition before rental
+    pickupPhotos: {
+      type: [String],  // array of file paths
+      default: [],
+    },
+
+    // Photos taken at return — proof of item condition after rental
+    returnPhotos: {
+      type: [String],
+      default: [],
+    },
+
+    // Reason filled in when owner rejects a booking request
+    rejectedReason: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt automatically
