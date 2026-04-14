@@ -9,7 +9,7 @@ app.use(cors()); // allow fe to send the request
 app.use(express.json()); // allow be to read json data from the request body
 app.use("/uploads", express.static("uploads")); // serve uploaded files (avatars etc.)
 
-app.get("/", (req, res) => { // test route
+app.get("/", (_req, res) => { // test route
   res.send("API running 🚀");
 });
 
@@ -26,5 +26,8 @@ app.use("/api/items", itemRoutes);
 
 const bookingRoutes = require("./modules/booking/booking.routes");
 app.use("/api/bookings", bookingRoutes);
+
+const reviewRoutes = require("./modules/review/review.routes");
+app.use("/api/reviews", reviewRoutes);
 
 module.exports = app; // export app to be used in server.js
