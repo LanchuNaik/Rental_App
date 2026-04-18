@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { loginApi } from '../../api/auth';
+import { saveSession } from '../../api/storage';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email,        setEmail]        = useState('');
@@ -28,8 +30,9 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
     setLoading(true);
     try {
-      // TODO: real POST /api/auth/login
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await loginApi(email, password);
+      // Save token + user to device storage
+      await saveSession(res.data.token, res.data.user);
       // Tell App.js we're logged in → switches to MainTabs
       if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
