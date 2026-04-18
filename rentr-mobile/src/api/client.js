@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { getToken } from './storage';
 
-// Change this one line when deploying to production
-const BASE_URL = 'http://localhost:5001/api';
+// Reads from .env file — never exposed in git
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
