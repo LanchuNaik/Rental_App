@@ -2,59 +2,75 @@
 // Browse Feed Screen
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, StatusBar,
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const MOCK_ITEMS = [
-  { id: '1', title: 'Canon DSLR Camera',     price: 35,  category: 'Cameras',     rating: 4.8, reviews: 24, distance: '1.2 km',  owner: 'Alex M.' },
-  { id: '2', title: 'Power Drill Set',        price: 15,  category: 'Tools',       rating: 4.5, reviews: 18, distance: '0.8 km',  owner: 'Sara K.' },
-  { id: '3', title: 'Mountain Bike',          price: 25,  category: 'Sports',      rating: 4.9, reviews: 41, distance: '2.1 km',  owner: 'Mike R.' },
-  { id: '4', title: 'Camping Tent (4-man)',   price: 20,  category: 'Outdoor',     rating: 4.7, reviews: 15, distance: '3.4 km',  owner: 'Lisa T.' },
-  { id: '5', title: 'DJI Mini 3 Drone',       price: 60,  category: 'Cameras',     rating: 4.6, reviews: 32, distance: '1.9 km',  owner: 'Tom B.' },
-  { id: '6', title: 'Pressure Washer',        price: 30,  category: 'Tools',       rating: 4.4, reviews: 9,  distance: '4.2 km',  owner: 'Anna S.' },
-  { id: '7', title: 'Road Bicycle',           price: 22,  category: 'Sports',      rating: 4.8, reviews: 27, distance: '0.5 km',  owner: 'Chris P.' },
-  { id: '8', title: 'Projector + Screen',     price: 40,  category: 'Electronics', rating: 4.9, reviews: 12, distance: '2.7 km',  owner: 'Jane L.' },
-];
+import { getItemsApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
 
 export default function BrowseFeedScreen({ navigation }) {
-  const [searchText,  setSearchText]  = useState('');
-  const [savedItems,  setSavedItems]  = useState([]);
+  const [searchText, setSearchText] = useState('');
+  const [items,      setItems]      = useState([]);
+  const [savedItems, setSavedItems] = useState([]);
+  const [loading,    setLoading]    = useState(true);
 
-  const toggleSave = (id) => {
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const res = await getItemsApi();
+        setItems(res.data);
+      } catch (err) {
+        Alert.alert('Error', err.message || 'Failed to load items');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItems();
+  }, []);
+
+  const toggleSave = async (id) => {
+    const alreadySaved = savedItems.includes(id);
     setSavedItems((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      alreadySaved ? prev.filter((x) => x !== id) : [...prev, id]
     );
+    try {
+      if (alreadySaved) await unsaveItemApi(id);
+      else await saveItemApi(id);
+    } catch (err) {
+      // revert on failure
+      setSavedItems((prev) =>
+        alreadySaved ? [...prev, id] : prev.filter((x) => x !== id)
+      );
+    }
   };
 
-  const filtered = MOCK_ITEMS.filter((item) =>
+  const filtered = items.filter((item) =>
     item.title.toLowerCase().includes(searchText.toLowerCase())
   );
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
+      onPress={() => navigation.navigate('ItemDetail', { itemId: item._id })}
       activeOpacity={0.9}
     >
       {/* Photo */}
       <View style={styles.photo}>
         <Ionicons name="image-outline" size={40} color={colors.textMuted} />
-        {/* Category badge */}
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{item.category}</Text>
-        </View>
-        {/* Save (heart) button */}
-        <TouchableOpacity style={styles.heartButton} onPress={() => toggleSave(item.id)}>
+        {item.category ? (
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{item.category}</Text>
+          </View>
+        ) : null}
+        <TouchableOpacity style={styles.heartButton} onPress={() => toggleSave(item._id)}>
           <Ionicons
-            name={savedItems.includes(item.id) ? 'heart' : 'heart-outline'}
+            name={savedItems.includes(item._id) ? 'heart' : 'heart-outline'}
             size={20}
-            color={savedItems.includes(item.id) ? colors.error : colors.textInverse}
+            color={savedItems.includes(item._id) ? colors.error : colors.textInverse}
           />
         </TouchableOpacity>
       </View>
@@ -65,16 +81,18 @@ export default function BrowseFeedScreen({ navigation }) {
         <View style={styles.metaRow}>
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={13} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.rating} ({item.reviews})</Text>
+            <Text style={styles.ratingText}>{item.avgRating ?? '—'}</Text>
           </View>
-          <View style={styles.distanceRow}>
-            <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-            <Text style={styles.distanceText}>{item.distance}</Text>
-          </View>
+          {item.location?.address ? (
+            <View style={styles.distanceRow}>
+              <Ionicons name="location-outline" size={13} color={colors.textMuted} />
+              <Text style={styles.distanceText}>{item.location.address}</Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.bottomRow}>
-          <Text style={styles.price}><Text style={styles.priceAmount}>${item.price}</Text>/day</Text>
-          <Text style={styles.owner}>{item.owner}</Text>
+          <Text style={styles.price}><Text style={styles.priceAmount}>₹{item.price}</Text>/day</Text>
+          <Text style={styles.owner}>{item.owner?.name || ''}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -112,7 +130,9 @@ export default function BrowseFeedScreen({ navigation }) {
       </View>
 
       {/* List */}
-      <FlatList
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={colors.primary} />
+      ) : <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
@@ -125,7 +145,7 @@ export default function BrowseFeedScreen({ navigation }) {
             <Text style={styles.emptySubtitle}>Try adjusting your search or filters</Text>
           </View>
         }
-      />
+      />}
     </Screen>
   );
 }

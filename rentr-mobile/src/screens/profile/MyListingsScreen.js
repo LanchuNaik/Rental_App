@@ -12,7 +12,10 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
@@ -21,10 +24,15 @@ import { getMyItemsApi } from '../../services/item.service';
 function ListingCard({ listing, onToggle }) {
   return (
     <View style={styles.card}>
-      {/* Photo Placeholder */}
-      <View style={[styles.cardPhoto, { backgroundColor: listing.placeholderColor }]}>
-        <Ionicons name="image-outline" size={32} color={colors.textMuted} />
-        {/* Status pill on photo */}
+      {/* Photo */}
+      <View style={styles.cardPhoto}>
+        {listing.image ? (
+          <Image source={{ uri: `${BASE_URL}/${listing.image}` }} style={styles.cardImage} />
+        ) : (
+          <View style={[styles.cardImagePlaceholder, { backgroundColor: listing.placeholderColor }]}>
+            <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+          </View>
+        )}
         <View style={[styles.statusPill, listing.isActive ? styles.statusPillActive : styles.statusPillPaused]}>
           <Text style={styles.statusPillText}>{listing.isActive ? 'Active' : 'Paused'}</Text>
         </View>
@@ -85,6 +93,7 @@ export default function MyListingsScreen({ navigation }) {
           isActive: item.isAvailable !== false,
           views: item.views || 0,
           bookings: item.bookingCount || 0,
+          image: item.images?.[0] || null,
           placeholderColor: '#E8F4F8',
         }));
         setListings(items);
@@ -242,9 +251,19 @@ const styles = StyleSheet.create({
   },
   cardPhoto: {
     height: 110,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   statusPill: {
     position: 'absolute',

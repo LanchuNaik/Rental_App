@@ -2,28 +2,66 @@
 // Item Detail Screen
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions,
+  StatusBar, Dimensions, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { getItemByIdApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
-const MOCK_ITEM = {
-  id: '1', title: 'Canon EOS R6 Camera', price: 65, deposit: 200,
-  category: 'Cameras', rating: 4.8, reviews: 24, distance: '1.2 km',
-  description: 'Professional mirrorless camera perfect for events, travel photography, and video. Comes with 24-105mm lens, extra battery, and camera bag. Perfect condition — cleaned before every rental.',
-  owner: { name: 'Alex Martinez', rating: 4.9, rentals: 47, avatar: 'AM' },
-  photos: [1, 2, 3],
-};
-
-export default function ItemDetailScreen({ navigation }) {
+export default function ItemDetailScreen({ navigation, route }) {
+  const itemId = route?.params?.itemId;
+  const [item,        setItem]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
   const [activePhoto, setActivePhoto] = useState(0);
   const [isSaved,     setIsSaved]     = useState(false);
-  const item = MOCK_ITEM;
+
+  useEffect(() => {
+    const fetchItem = async () => {
+      try {
+        const res = await getItemByIdApi(itemId);
+        setItem(res.data);
+      } catch (err) {
+        Alert.alert('Error', err.message || 'Failed to load item');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (itemId) fetchItem();
+  }, [itemId]);
+
+  const toggleSave = async () => {
+    setIsSaved((prev) => !prev);
+    try {
+      if (isSaved) await unsaveItemApi(itemId);
+      else await saveItemApi(itemId);
+    } catch {
+      setIsSaved((prev) => !prev); // revert
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!item) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={{ color: colors.textMuted }}>Item not found</Text>
+      </View>
+    );
+  }
+
+  const photos = item.images?.length > 0 ? item.images : [1];
+  const ownerInitials = item.owner?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   return (
     <View style={styles.container}>
@@ -33,12 +71,12 @@ export default function ItemDetailScreen({ navigation }) {
       <View style={styles.photoCarousel}>
         <View style={styles.photoPlaceholder}>
           <Ionicons name="camera" size={60} color={colors.textMuted} />
-          <Text style={styles.photoCount}>Photo {activePhoto + 1} of {item.photos.length}</Text>
+          <Text style={styles.photoCount}>Photo {activePhoto + 1} of {photos.length}</Text>
         </View>
 
         {/* Pagination dots */}
         <View style={styles.photoDots}>
-          {item.photos.map((_, i) => (
+          {photos.map((_, i) => (
             <TouchableOpacity key={i} onPress={() => setActivePhoto(i)}>
               <View style={[styles.photoDot, activePhoto === i && styles.photoDotActive]} />
             </TouchableOpacity>
@@ -50,7 +88,7 @@ export default function ItemDetailScreen({ navigation }) {
           <TouchableOpacity style={styles.overlayBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.overlayBtn} onPress={() => setIsSaved(!isSaved)}>
+          <TouchableOpacity style={styles.overlayBtn} onPress={toggleSave}>
             <Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={22} color={isSaved ? colors.error : colors.textPrimary} />
           </TouchableOpacity>
         </View>
@@ -61,45 +99,49 @@ export default function ItemDetailScreen({ navigation }) {
         {/* Title + rating */}
         <View style={styles.titleRow}>
           <View style={styles.titleLeft}>
-            <Text style={styles.category}>{item.category}</Text>
+            {item.category ? <Text style={styles.category}>{item.category}</Text> : null}
             <Text style={styles.title}>{item.title}</Text>
           </View>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={14} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-          </View>
+          {item.avgRating ? (
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={14} color="#F59E0B" />
+              <Text style={styles.ratingText}>{item.avgRating}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-          <Text style={styles.metaText}>{item.distance} away</Text>
-          <Text style={styles.metaDot}>·</Text>
-          <Text style={styles.metaText}>{item.reviews} reviews</Text>
+          <Text style={styles.metaText}>{item.location?.address || 'Location not set'}</Text>
         </View>
 
         {/* Pricing */}
         <View style={styles.pricingCard}>
           <View style={styles.pricingItem}>
             <Text style={styles.pricingLabel}>Per day</Text>
-            <Text style={styles.pricingValue}>${item.price}</Text>
+            <Text style={styles.pricingValue}>₹{item.price}</Text>
           </View>
-          <View style={styles.pricingDivider} />
-          <View style={styles.pricingItem}>
-            <Text style={styles.pricingLabel}>Deposit</Text>
-            <Text style={styles.pricingValue}>${item.deposit}</Text>
-          </View>
+          {item.deposit ? (
+            <>
+              <View style={styles.pricingDivider} />
+              <View style={styles.pricingItem}>
+                <Text style={styles.pricingLabel}>Deposit</Text>
+                <Text style={styles.pricingValue}>₹{item.deposit}</Text>
+              </View>
+            </>
+          ) : null}
         </View>
 
         {/* Owner card */}
         <View style={styles.ownerCard}>
           <View style={styles.ownerAvatar}>
-            <Text style={styles.ownerAvatarText}>{item.owner.avatar}</Text>
+            <Text style={styles.ownerAvatarText}>{ownerInitials}</Text>
           </View>
           <View style={styles.ownerInfo}>
-            <Text style={styles.ownerName}>{item.owner.name}</Text>
+            <Text style={styles.ownerName}>{item.owner?.name || 'Owner'}</Text>
             <View style={styles.ownerMeta}>
               <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={styles.ownerMetaText}>{item.owner.rating} · {item.owner.rentals} rentals</Text>
+              <Text style={styles.ownerMetaText}>{item.owner?.rating ?? '—'}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.messageBtn}>
@@ -114,7 +156,7 @@ export default function ItemDetailScreen({ navigation }) {
         {/* Availability */}
         <TouchableOpacity
           style={styles.availabilityButton}
-          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item.id })}
+          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id })}
         >
           <Ionicons name="calendar-outline" size={20} color={colors.primary} />
           <Text style={styles.availabilityText}>Check availability</Text>
@@ -127,12 +169,12 @@ export default function ItemDetailScreen({ navigation }) {
       {/* Sticky Book Now footer */}
       <View style={styles.footer}>
         <View style={styles.footerPrice}>
-          <Text style={styles.footerPriceAmount}>${item.price}</Text>
+          <Text style={styles.footerPriceAmount}>₹{item.price}</Text>
           <Text style={styles.footerPriceLabel}>/day</Text>
         </View>
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item.id })}
+          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id })}
           activeOpacity={0.85}
         >
           <Text style={styles.bookButtonText}>Book Now</Text>
