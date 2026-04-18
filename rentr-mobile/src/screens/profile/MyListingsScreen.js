@@ -2,7 +2,7 @@
 // MyListingsScreen — Owner's listings grid
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,58 +10,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const INITIAL_LISTINGS = [
-  {
-    id: 'l1',
-    title: 'Sony A7 III Camera',
-    pricePerDay: 40,
-    isActive: true,
-    views: 142,
-    bookings: 8,
-    placeholderColor: '#BFDBFE',
-  },
-  {
-    id: 'l2',
-    title: 'DJI Mini 3 Drone',
-    pricePerDay: 45,
-    isActive: true,
-    views: 89,
-    bookings: 5,
-    placeholderColor: '#BBF7D0',
-  },
-  {
-    id: 'l3',
-    title: 'Trek Mountain Bike',
-    pricePerDay: 20,
-    isActive: false,
-    views: 210,
-    bookings: 12,
-    placeholderColor: '#FDE68A',
-  },
-  {
-    id: 'l4',
-    title: 'Camping Tent (4-Person)',
-    pricePerDay: 15,
-    isActive: true,
-    views: 67,
-    bookings: 4,
-    placeholderColor: '#DDD6FE',
-  },
-  {
-    id: 'l5',
-    title: 'Surfboard — 9ft Longboard',
-    pricePerDay: 18,
-    isActive: true,
-    views: 55,
-    bookings: 3,
-    placeholderColor: '#FBCFE8',
-  },
-];
+import { getMyItemsApi } from '../../services/item.service';
 
 function ListingCard({ listing, onToggle }) {
   return (
@@ -78,7 +33,7 @@ function ListingCard({ listing, onToggle }) {
       {/* Card Body */}
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>{listing.title}</Text>
-        <Text style={styles.priceText}>${listing.pricePerDay}<Text style={styles.priceUnit}>/day</Text></Text>
+        <Text style={styles.priceText}>₹{listing.pricePerDay}<Text style={styles.priceUnit}>/day</Text></Text>
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -116,7 +71,31 @@ function ListingCard({ listing, onToggle }) {
 }
 
 export default function MyListingsScreen({ navigation }) {
-  const [listings, setListings] = useState(INITIAL_LISTINGS);
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const res = await getMyItemsApi();
+        const items = res.data.map((item) => ({
+          id: item._id,
+          title: item.title,
+          pricePerDay: item.pricePerDay ?? item.price,
+          isActive: item.isAvailable !== false,
+          views: item.views || 0,
+          bookings: item.bookingCount || 0,
+          placeholderColor: '#E8F4F8',
+        }));
+        setListings(items);
+      } catch (err) {
+        Alert.alert('Error', err.message || 'Failed to load listings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchListings();
+  }, []);
 
   const toggleListing = (id) => {
     setListings((prev) =>
@@ -145,7 +124,9 @@ export default function MyListingsScreen({ navigation }) {
         </Text>
       </View>
 
-      {listings.length === 0 ? (
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={colors.primary} />
+      ) : listings.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="add-circle-outline" size={64} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>No listings yet</Text>

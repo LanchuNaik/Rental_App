@@ -2,68 +2,20 @@
 // SavedItemsScreen — Saved / wishlist items grid
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const INITIAL_SAVED = [
-  {
-    id: 's1',
-    title: 'DJI Air 3 Drone',
-    pricePerDay: 55,
-    distance: '1.2 mi',
-    placeholderColor: '#BFDBFE',
-    rating: 4.9,
-  },
-  {
-    id: 's2',
-    title: 'Kayak — Single Person',
-    pricePerDay: 30,
-    distance: '3.5 mi',
-    placeholderColor: '#BBF7D0',
-    rating: 4.7,
-  },
-  {
-    id: 's3',
-    title: 'Electric Skateboard',
-    pricePerDay: 22,
-    distance: '0.8 mi',
-    placeholderColor: '#FDE68A',
-    rating: 4.8,
-  },
-  {
-    id: 's4',
-    title: 'Portable Projector',
-    pricePerDay: 28,
-    distance: '2.1 mi',
-    placeholderColor: '#DDD6FE',
-    rating: 4.6,
-  },
-  {
-    id: 's5',
-    title: 'Camping Hammock Set',
-    pricePerDay: 12,
-    distance: '4.0 mi',
-    placeholderColor: '#FBCFE8',
-    rating: 4.5,
-  },
-  {
-    id: 's6',
-    title: 'GoPro Hero 12 Kit',
-    pricePerDay: 18,
-    distance: '1.7 mi',
-    placeholderColor: '#CFFAFE',
-    rating: 4.9,
-  },
-];
+import { getSavedItemsApi, unsaveItemApi } from '../../services/item.service';
 
 function SavedCard({ item, onUnsave, onPress }) {
   return (
@@ -80,13 +32,15 @@ function SavedCard({ item, onUnsave, onPress }) {
       {/* Card Body */}
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        <View style={styles.ratingRow}>
-          <Ionicons name="star" size={11} color="#F59E0B" />
-          <Text style={styles.ratingText}>{item.rating}</Text>
-        </View>
+        {item.rating ? (
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={11} color="#F59E0B" />
+            <Text style={styles.ratingText}>{item.rating}</Text>
+          </View>
+        ) : null}
         <View style={styles.cardFooter}>
           <Text style={styles.price}>
-            <Text style={styles.priceAmount}>${item.pricePerDay}</Text>
+            <Text style={styles.priceAmount}>₹{item.pricePerDay}</Text>
             <Text style={styles.priceUnit}>/day</Text>
           </Text>
           <View style={styles.distanceRow}>
@@ -100,10 +54,38 @@ function SavedCard({ item, onUnsave, onPress }) {
 }
 
 export default function SavedItemsScreen({ navigation }) {
-  const [savedItems, setSavedItems] = useState(INITIAL_SAVED);
+  const [savedItems, setSavedItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleUnsave = (id) => {
-    setSavedItems((prev) => prev.filter((item) => item.id !== id));
+  useEffect(() => {
+    const fetchSaved = async () => {
+      try {
+        const res = await getSavedItemsApi();
+        const items = res.data.map((item) => ({
+          id: item._id,
+          title: item.title,
+          pricePerDay: item.pricePerDay,
+          distance: item.location?.address || '',
+          placeholderColor: '#BFDBFE',
+          rating: item.avgRating || null,
+        }));
+        setSavedItems(items);
+      } catch (err) {
+        Alert.alert('Error', err.message || 'Failed to load saved items');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSaved();
+  }, []);
+
+  const handleUnsave = async (id) => {
+    try {
+      await unsaveItemApi(id);
+      setSavedItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to remove item');
+    }
   };
 
   return (
@@ -117,7 +99,9 @@ export default function SavedItemsScreen({ navigation }) {
         <View style={styles.headerRight} />
       </View>
 
-      {savedItems.length === 0 ? (
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color={colors.primary} />
+      ) : savedItems.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
             <Ionicons name="heart-outline" size={56} color={colors.textMuted} />
