@@ -31,6 +31,9 @@ const itemSchema = new mongoose.Schema({
       default: null,
     },
   },
+  availableFrom: { type: Date, default: null },
+  availableTo:   { type: Date, default: null },
+
   // Array of user IDs who saved/favourited this item
   savedBy: [
     {

@@ -2,7 +2,7 @@
 // AddListingScreen — Single page listing form
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,25 +12,39 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { createItemApi } from '../../services/item.service';
 
-export default function AddListingScreen({ navigation }) {
-  const [publishing, setPublishing] = useState(false);
-  const [photos, setPhotos] = useState(Array(5).fill(null));
+const formatDate = (date) =>
+  date ? date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Select date';
+
+export default function AddListingScreen({ navigation, route }) {
+  const [publishing,     setPublishing]     = useState(false);
+  const [photos,         setPhotos]         = useState(Array(5).fill(null));
+  const [availableFrom,  setAvailableFrom]  = useState(null);
+  const [availableTo,    setAvailableTo]    = useState(null);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker,   setShowToPicker]   = useState(false);
+  const [location, setLocation] = useState(null); // { latitude, longitude, address }
   const [form, setForm] = useState({
     title:       '',
     category:    '',
     description: '',
     price:       '',
-    address:     '',
-    latitude:    '',
-    longitude:   '',
   });
+
+  // Receive picked location from MapPickerScreen
+  useEffect(() => {
+    if (route?.params?.pickedLocation) {
+      setLocation(route.params.pickedLocation);
+    }
+  }, [route?.params?.pickedLocation]);
 
   const pickPhoto = async (idx) => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -49,7 +63,7 @@ export default function AddListingScreen({ navigation }) {
     if (!form.title.trim())       { Alert.alert('Required', 'Please enter an item title.'); return; }
     if (!form.description.trim()) { Alert.alert('Required', 'Please enter a description.'); return; }
     if (!form.price)              { Alert.alert('Required', 'Please enter a daily rate.'); return; }
-    if (!form.address.trim())     { Alert.alert('Required', 'Please enter a pickup address.'); return; }
+    if (!location)                { Alert.alert('Required', 'Please pick a location on the map.'); return; }
 
     setPublishing(true);
     try {
@@ -57,10 +71,12 @@ export default function AddListingScreen({ navigation }) {
       formData.append('title',       form.title.trim());
       formData.append('description', form.description.trim());
       formData.append('price',       form.price);
-      if (form.category.trim()) formData.append('category',  form.category.trim());
-      if (form.address.trim())  formData.append('address',   form.address.trim());
-      if (form.latitude)        formData.append('latitude',  form.latitude);
-      if (form.longitude)       formData.append('longitude', form.longitude);
+      if (form.category.trim())  formData.append('category',      form.category.trim());
+      formData.append('address',     location.address);
+      formData.append('latitude',    String(location.latitude));
+      formData.append('longitude',   String(location.longitude));
+      if (availableFrom)         formData.append('availableFrom', availableFrom.toISOString());
+      if (availableTo)           formData.append('availableTo',   availableTo.toISOString());
 
       photos.filter(Boolean).forEach((uri) => {
         formData.append('images', { uri, name: `item_${Date.now()}.jpg`, type: 'image/jpeg' });
@@ -184,46 +200,72 @@ export default function AddListingScreen({ navigation }) {
         {/* Location */}
         <Text style={styles.sectionTitle}>Pickup Location</Text>
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Address *</Text>
-          <TextInput
-            style={styles.input}
-            value={form.address}
-            onChangeText={(v) => setForm((f) => ({ ...f, address: v }))}
-            placeholder="e.g. Jigani APC Circle, Bangalore"
-            placeholderTextColor={colors.textMuted}
-          />
-        </View>
+        <TouchableOpacity
+          style={styles.mapPickerBtn}
+          onPress={() => navigation.navigate('MapPicker', {
+            initial: location ? location : undefined,
+          })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="map-outline" size={22} color={colors.primary} />
+          <Text style={styles.mapPickerBtnText}>
+            {location ? 'Change Location' : 'Pick on Map'}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+        </TouchableOpacity>
+
+        {location && (
+          <View style={styles.locationPreview}>
+            <Ionicons name="location" size={16} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationAddress}>{location.address}</Text>
+              <Text style={styles.locationCoords}>
+                {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Availability */}
+        <Text style={styles.sectionTitle}>Availability</Text>
 
         <View style={styles.rowFields}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Latitude</Text>
-            <TextInput
-              style={styles.input}
-              value={form.latitude}
-              onChangeText={(v) => setForm((f) => ({ ...f, latitude: v }))}
-              placeholder="12.9716"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-            />
+            <Text style={styles.fieldLabel}>Available From</Text>
+            <TouchableOpacity style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              <Text style={[styles.dateBtnText, !availableFrom && styles.dateBtnPlaceholder]}>
+                {formatDate(availableFrom)}
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Longitude</Text>
-            <TextInput
-              style={styles.input}
-              value={form.longitude}
-              onChangeText={(v) => setForm((f) => ({ ...f, longitude: v }))}
-              placeholder="77.5946"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-            />
+            <Text style={styles.fieldLabel}>Available To</Text>
+            <TouchableOpacity style={styles.dateBtn} onPress={() => setShowToPicker(true)}>
+              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              <Text style={[styles.dateBtnText, !availableTo && styles.dateBtnPlaceholder]}>
+                {formatDate(availableTo)}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.tipsBox}>
-          <Text style={styles.tipsTitle}>Finding coordinates</Text>
-          <Text style={styles.tipsBody}>Open Google Maps → long-press your location → copy the numbers shown at the top.</Text>
-        </View>
+        {showFromPicker && (
+          <DateTimePicker
+            value={availableFrom || new Date()}
+            mode="date"
+            minimumDate={new Date()}
+            onChange={(_, date) => { setShowFromPicker(false); if (date) setAvailableFrom(date); }}
+          />
+        )}
+        {showToPicker && (
+          <DateTimePicker
+            value={availableTo || availableFrom || new Date()}
+            mode="date"
+            minimumDate={availableFrom || new Date()}
+            onChange={(_, date) => { setShowToPicker(false); if (date) setAvailableTo(date); }}
+          />
+        )}
 
         {/* Publish Button */}
         <TouchableOpacity
@@ -317,6 +359,43 @@ const styles = StyleSheet.create({
   prefixText:  { ...typography.body, fontWeight: '700', color: colors.textSecondary },
   prefixInput: { flex: 1, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   rowFields:   { flexDirection: 'row', gap: spacing.md },
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  dateBtnText:        { ...typography.bodySmall, color: colors.textPrimary },
+  dateBtnPlaceholder: { color: colors.textMuted },
+  mapPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryLight,
+  },
+  mapPickerBtnText: { ...typography.body, fontWeight: '600', color: colors.primary, flex: 1 },
+  locationPreview: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  locationAddress: { ...typography.bodySmall, color: colors.textPrimary, lineHeight: 20 },
+  locationCoords:  { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   tipsBox:     { backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   tipsTitle:   { ...typography.bodySmall, fontWeight: '700', color: colors.primaryDark },
   tipsBody:    { ...typography.bodySmall, color: colors.primary, lineHeight: 20 },

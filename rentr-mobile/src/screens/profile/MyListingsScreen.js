@@ -16,6 +16,9 @@ import {
 } from 'react-native';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
@@ -54,6 +57,16 @@ function ListingCard({ listing, onToggle }) {
             <Text style={styles.statText}>{listing.bookings}</Text>
           </View>
         </View>
+
+        {/* Availability */}
+        {(listing.availableFrom || listing.availableTo) && (
+          <View style={styles.availabilityRow}>
+            <Ionicons name="calendar-outline" size={12} color={colors.primary} />
+            <Text style={styles.availabilityText}>
+              {formatDate(listing.availableFrom)} – {formatDate(listing.availableTo) || '...'}
+            </Text>
+          </View>
+        )}
 
         {/* Toggle */}
         <View style={styles.toggleRow}>
@@ -94,6 +107,8 @@ export default function MyListingsScreen({ navigation }) {
           views: item.views || 0,
           bookings: item.bookingCount || 0,
           image: item.images?.[0] || null,
+          availableFrom: item.availableFrom || null,
+          availableTo:   item.availableTo   || null,
           placeholderColor: '#E8F4F8',
         }));
         setListings(items);
@@ -317,6 +332,22 @@ const styles = StyleSheet.create({
   statText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  availabilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  availabilityText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 10,
   },
   toggleRow: {
     flexDirection: 'row',

@@ -2,7 +2,7 @@ const Item = require("./item.model");
 
 const createItem = async (req, res) => {
   try {
-    const { title, description, price, category, latitude, longitude, address } = req.body;
+    const { title, description, price, category, latitude, longitude, address, availableFrom, availableTo } = req.body;
 
     // Input validation
     if (!title || !description || !price) {
@@ -34,6 +34,8 @@ const createItem = async (req, res) => {
         address: address || null,
       },
       owner: req.user.userId,
+      availableFrom: availableFrom || null,
+      availableTo:   availableTo   || null,
     });
 
     res.status(201).json({

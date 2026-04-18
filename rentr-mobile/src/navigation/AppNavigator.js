@@ -104,6 +104,7 @@ import SavedItemsScreen      from '../screens/profile/SavedItemsScreen';
 import NotificationsScreen   from '../screens/profile/NotificationsScreen';
 import SettingsScreen        from '../screens/profile/SettingsScreen';
 import RaiseDisputeScreen    from '../screens/profile/RaiseDisputeScreen';
+import MapPickerScreen       from '../screens/profile/MapPickerScreen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create navigator instances
@@ -187,6 +188,7 @@ function ProfileStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings"      component={SettingsScreen} />
       <Stack.Screen name="RaiseDispute"  component={RaiseDisputeScreen} />
+      <Stack.Screen name="MapPicker"     component={MapPickerScreen} />
     </Stack.Navigator>
   );
 }
