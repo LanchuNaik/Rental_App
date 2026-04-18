@@ -190,6 +190,168 @@ const upload = multer({
  *         description: Server error
  */
 
+/**
+ * @swagger
+ * /api/bookings/incoming:
+ *   get:
+ *     summary: Get all incoming booking requests for owner's items
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Incoming requests fetched
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ *
+ * /api/bookings/{id}:
+ *   get:
+ *     summary: Get a single booking by ID
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Booking fetched
+ *       403:
+ *         description: Unauthorized - not renter or owner
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Server error
+ *
+ * /api/bookings/{id}/cancel:
+ *   put:
+ *     summary: Renter cancels a booking
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Booking cancelled
+ *       400:
+ *         description: Cannot cancel at current status
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Server error
+ *
+ * /api/bookings/{id}/reject:
+ *   put:
+ *     summary: Owner rejects a booking request
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: Item unavailable on those dates
+ *     responses:
+ *       200:
+ *         description: Booking rejected
+ *       400:
+ *         description: Can only reject pending bookings
+ *       403:
+ *         description: Unauthorized
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Server error
+ *
+ * /api/bookings/{id}/pickup:
+ *   put:
+ *     summary: Owner uploads pickup photos and marks booking as active
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Pickup photos uploaded, booking now active
+ *       400:
+ *         description: No photos or booking not confirmed
+ *       403:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ *
+ * /api/bookings/{id}/return:
+ *   put:
+ *     summary: Owner uploads return photos and marks booking as completed
+ *     tags: [Booking]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Return confirmed, booking completed
+ *       400:
+ *         description: No photos or booking not active
+ *       403:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
 // Specific named routes first — before /:id
 router.post("/",          authMiddleware, createBooking);
 router.get("/my",         authMiddleware, getMyBookings);

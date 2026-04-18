@@ -2,14 +2,14 @@
  * @swagger
  * /api/items:
  *   post:
- *     summary: Create a new item
+ *     summary: Create a new item listing (with optional images)
  *     tags: [Item]
  *     security:
  *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -19,27 +19,35 @@
  *             properties:
  *               title:
  *                 type: string
- *                 example: Apartment in Downtown
+ *                 example: Camping Tent
  *               description:
  *                 type: string
- *                 example: Beautiful 2-bedroom apartment with parking
+ *                 example: 4-person tent, great for weekends
  *               price:
  *                 type: number
- *                 example: 1500
+ *                 example: 50
+ *               category:
+ *                 type: string
+ *                 example: Camping
+ *               latitude:
+ *                 type: number
+ *                 example: -33.8688
+ *               longitude:
+ *                 type: number
+ *                 example: 151.2093
+ *               address:
+ *                 type: string
+ *                 example: Sydney, NSW
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       201:
  *         description: Item created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 item:
- *                   type: object
  *       401:
- *         description: Unauthorized - Missing or invalid token
+ *         description: Unauthorized
  *       500:
  *         description: Server error
  *   get:
@@ -285,6 +293,111 @@ const upload = multer({
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },  // 5MB per file
 });
+
+/**
+ * @swagger
+ * /api/items/saved:
+ *   get:
+ *     summary: Get all items saved by the logged-in user
+ *     tags: [Item]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Saved items fetched
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ *
+ * /api/items/nearby:
+ *   get:
+ *     summary: Get items near a location
+ *     tags: [Item]
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: -33.8688
+ *       - in: query
+ *         name: lng
+ *         required: true
+ *         schema:
+ *           type: number
+ *         example: 151.2093
+ *       - in: query
+ *         name: radius
+ *         required: false
+ *         schema:
+ *           type: number
+ *         description: Radius in km (default 10)
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: Nearby items fetched
+ *       400:
+ *         description: lat and lng are required
+ *       500:
+ *         description: Server error
+ *
+ * /api/items/{id}/availability:
+ *   get:
+ *     summary: Get booked date ranges for an item (for calendar blocking)
+ *     tags: [Item]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Availability data fetched
+ *       500:
+ *         description: Server error
+ *
+ * /api/items/{id}/save:
+ *   post:
+ *     summary: Save an item to favourites
+ *     tags: [Item]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item saved
+ *       400:
+ *         description: Already saved
+ *       404:
+ *         description: Item not found
+ *       500:
+ *         description: Server error
+ *   delete:
+ *     summary: Remove an item from favourites
+ *     tags: [Item]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item removed from saved
+ *       404:
+ *         description: Item not found
+ *       500:
+ *         description: Server error
+ */
 
 // --- Routes ---
 
