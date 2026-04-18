@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-import { resetPasswordApi } from '../../api/auth';
+import { resetPasswordApi } from '../../services/auth.service';
 
 export default function ResetPasswordScreen({ navigation, route }) {
   // Token arrives from the email deep link as a navigation param

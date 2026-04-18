@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getToken } from './storage';
+import { getToken } from '../services/storage.service';
 
 // Reads from .env file — never exposed in git
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;

@@ -2,7 +2,7 @@
 // ProfileHomeScreen — Profile tab root screen
 // ============================================
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const MOCK_USER = {
-  name: 'Jamie Doe',
-  initials: 'JD',
-  rating: 4.8,
-  reviewCount: 23,
-  listings: 5,
-  rentals: 18,
-  memberSince: '2024',
-};
+import { getProfileApi } from '../../services/user.service';
+import { clearSession } from '../../services/storage.service';
 
 const MENU_ITEMS = [
   { label: 'My Listings', icon: 'grid-outline', route: 'MyListings', color: colors.primary },
@@ -52,13 +45,54 @@ function StarRow({ rating, reviewCount }) {
   );
 }
 
-export default function ProfileHomeScreen({ navigation }) {
+export default function ProfileHomeScreen({ navigation, onLogout }) {
+  const [user, setUser]       = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await getProfileApi();
+        setUser(res.data);
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => {} },
+      {
+        text: 'Log Out', style: 'destructive', onPress: async () => {
+          await clearSession();       // clear token from device
+          if (onLogout) onLogout();   // tell App.js to go back to auth screens
+        }
+      },
     ]);
   };
+
+  if (loading) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
+
+  // Derive initials from name e.g. "Jamie Doe" → "JD"
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
+
+  const memberYear = user?.createdAt
+    ? new Date(user.createdAt).getFullYear().toString()
+    : '—';
 
   return (
     <Screen>
@@ -82,29 +116,29 @@ export default function ProfileHomeScreen({ navigation }) {
         {/* Avatar overlapping cover */}
         <View style={styles.avatarWrapper}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>{MOCK_USER.initials}</Text>
+            <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
         </View>
 
         {/* User Info */}
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{MOCK_USER.name}</Text>
-          <StarRow rating={MOCK_USER.rating} reviewCount={MOCK_USER.reviewCount} />
+          <Text style={styles.userName}>{user?.name}</Text>
+          <StarRow rating={0} reviewCount={0} />
 
           {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{MOCK_USER.listings}</Text>
+              <Text style={styles.statValue}>—</Text>
               <Text style={styles.statLabel}>Listings</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{MOCK_USER.rentals}</Text>
+              <Text style={styles.statValue}>—</Text>
               <Text style={styles.statLabel}>Rentals</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{MOCK_USER.memberSince}</Text>
+              <Text style={styles.statValue}>{memberYear}</Text>
               <Text style={styles.statLabel}>Member Since</Text>
             </View>
           </View>

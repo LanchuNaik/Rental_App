@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-import { forgotPasswordApi } from '../../api/auth';
+import { forgotPasswordApi } from '../../services/auth.service';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email,        setEmail]        = useState('');

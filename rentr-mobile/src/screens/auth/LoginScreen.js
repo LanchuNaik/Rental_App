@@ -11,8 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-import { loginApi } from '../../api/auth';
-import { saveSession } from '../../api/storage';
+import { loginApi } from '../../services/auth.service';
+import { saveSession } from '../../services/storage.service';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email,        setEmail]        = useState('');

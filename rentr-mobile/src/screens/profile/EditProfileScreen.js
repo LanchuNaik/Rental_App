@@ -2,7 +2,7 @@
 // EditProfileScreen — Edit user profile form
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,27 +15,53 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { getProfileApi, updateProfileApi } from '../../services/user.service';
 
 export default function EditProfileScreen({ navigation }) {
-  const [fullName, setFullName] = useState('Jamie Doe');
-  const [bio, setBio] = useState('Outdoor enthusiast and photography lover based in San Francisco. I take great care of my gear!');
-  const [phone, setPhone] = useState('+1 (415) 555-0198');
+  const [fullName, setFullName] = useState('');
+  const [bio,      setBio]      = useState('');
+  const [phone,    setPhone]    = useState('');
+  const [email,    setEmail]    = useState('');
 
   const [focusedField, setFocusedField] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [loading,  setLoading]  = useState(true);
 
-  const handleSave = () => {
+  // Load current profile data when screen opens
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await getProfileApi();
+        const u = res.data;
+        setFullName(u.name  || '');
+        setBio(u.bio        || '');
+        setPhone(u.phone    || '');
+        setEmail(u.email    || '');
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
     if (!fullName.trim()) {
       Alert.alert('Validation', 'Full name is required.');
       return;
     }
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      await updateProfileApi({ name: fullName.trim(), bio, phone });
       Alert.alert('Profile Updated', 'Your profile has been saved successfully.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
-    }, 800);
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = (field) => [
@@ -64,7 +90,9 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.avatarSection}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarInitials}>JD</Text>
+              <Text style={styles.avatarInitials}>
+                {fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+              </Text>
             </View>
             <TouchableOpacity style={styles.avatarEditOverlay}>
               <Ionicons name="camera" size={18} color={colors.textInverse} />
@@ -137,7 +165,7 @@ export default function EditProfileScreen({ navigation }) {
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Email</Text>
             <View style={[styles.input, styles.inputDisabled]}>
-              <Text style={styles.inputDisabledText}>jamie.doe@email.com</Text>
+              <Text style={styles.inputDisabledText}>{email}</Text>
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                 <Text style={styles.verifiedText}>Verified</Text>

@@ -11,8 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-import { registerApi } from '../../api/auth';
-import { saveSession } from '../../api/storage';
+import { registerApi } from '../../services/auth.service';
+import { saveSession } from '../../services/storage.service';
 
 function getPasswordStrength(password) {
   if (!password) return { score: 0, label: '', color: colors.border };
