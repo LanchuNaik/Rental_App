@@ -10,8 +10,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { resetPasswordApi } from '../../api/auth';
 
-export default function ResetPasswordScreen({ navigation }) {
+export default function ResetPasswordScreen({ navigation, route }) {
+  // Token arrives from the email deep link as a navigation param
+  const token = route?.params?.token;
   const [password,        setPassword]        = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword,    setShowPassword]    = useState(false);
@@ -21,13 +24,16 @@ export default function ResetPasswordScreen({ navigation }) {
   const [focusedField,    setFocusedField]    = useState(null);
 
   const handleReset = async () => {
+    if (!token)                        return Alert.alert('Invalid link', 'Reset link is missing or expired. Please request a new one.');
     if (password.length < 6)          return Alert.alert('Too short', 'Password must be at least 6 characters.');
     if (password !== confirmPassword)  return Alert.alert('Mismatch', 'Passwords do not match.');
+
     setLoading(true);
     try {
-      // TODO: POST /api/auth/reset-password/:token
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await resetPasswordApi(token, password);
       setDone(true);
+    } catch (err) {
+      Alert.alert('Failed', err.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
