@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { registerApi } from '../../api/auth';
+import { saveSession } from '../../api/storage';
 
 function getPasswordStrength(password) {
   if (!password) return { score: 0, label: '', color: colors.border };
@@ -52,8 +54,9 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      // TODO: real POST /api/auth/register
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await registerApi(name.trim(), email, password);
+      // Auto login after register — save token so user doesn't need to login again
+      await saveSession(res.data.token, res.data.user);
       navigation.navigate('RolePicker');
     } catch (err) {
       Alert.alert('Registration failed', err.message || 'Something went wrong.');

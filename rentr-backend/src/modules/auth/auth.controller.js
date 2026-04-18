@@ -34,13 +34,23 @@ const signup = async (req, res) => {
       password: hashedPassword
     });
 
+    // Generate token immediately so user is auto-logged in after signup
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
     res.status(201).json({
       success: true,
       message: "User created successfully",
       data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        }
       }
     });
 
