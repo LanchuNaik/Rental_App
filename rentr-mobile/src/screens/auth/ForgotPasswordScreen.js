@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { forgotPasswordApi } from '../../api/auth';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email,        setEmail]        = useState('');
@@ -23,9 +24,10 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (!isValidEmail(email)) return;
     setLoading(true);
     try {
-      // TODO: POST /api/auth/forgot-password
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await forgotPasswordApi(email);
       setSubmitted(true);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
