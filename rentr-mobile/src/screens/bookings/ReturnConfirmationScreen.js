@@ -11,38 +11,52 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { confirmReturnApi } from '../../services/booking.service';
 
-const MOCK_PICKUP_PHOTOS = [
-  { id: 'p1', color: '#BFDBFE', label: 'Front' },
-  { id: 'p2', color: '#BBF7D0', label: 'Side' },
-];
+export default function ReturnConfirmationScreen({ navigation, route }) {
+  const { bookingId } = route?.params || {};
+  const [returnPhotos,  setReturnPhotos]  = useState([]);
+  const [damageNote,    setDamageNote]    = useState('');
+  const [noteFocused,   setNoteFocused]   = useState(false);
+  const [confirmed,     setConfirmed]     = useState(false);
+  const [uploading,     setUploading]     = useState(false);
 
-export default function ReturnConfirmationScreen({ navigation }) {
-  const [returnPhotos, setReturnPhotos] = useState([]);
-  const [damageNote, setDamageNote] = useState('');
-  const [noteFocused, setNoteFocused] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const handleTakeReturnPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setReturnPhotos((prev) => [...prev, { uri: result.assets[0].uri }]);
+    }
+  };
 
-  const handleTakeReturnPhoto = () => {
-    Alert.alert('Camera', 'Camera access would open here.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Simulate Add',
-        onPress: () => {
-          const photoColors = ['#FDE68A', '#DDD6FE', '#FBCFE8', '#CFFAFE', '#FEF9C3'];
-          const newPhoto = {
-            id: `rp${Date.now()}`,
-            color: photoColors[returnPhotos.length % photoColors.length],
-            label: `Return ${returnPhotos.length + 1}`,
-          };
-          setReturnPhotos((prev) => [...prev, newPhoto]);
-        },
-      },
-    ]);
+  const handlePickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow photo library access in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setReturnPhotos((prev) => [...prev, ...result.assets.map((a) => ({ uri: a.uri }))]);
+    }
   };
 
   const handleConfirmReturn = () => {
@@ -53,7 +67,21 @@ export default function ReturnConfirmationScreen({ navigation }) {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: () => setConfirmed(true),
+          onPress: async () => {
+            if (!bookingId) {
+              Alert.alert('Error', 'Booking ID is missing.');
+              return;
+            }
+            setUploading(true);
+            try {
+              await confirmReturnApi(bookingId, returnPhotos.map((p) => p.uri));
+              setConfirmed(true);
+            } catch (err) {
+              Alert.alert('Error', err.message || 'Could not confirm return. Please try again.');
+            } finally {
+              setUploading(false);
+            }
+          },
         },
       ]
     );
@@ -93,7 +121,6 @@ export default function ReturnConfirmationScreen({ navigation }) {
 
   return (
     <Screen>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
@@ -104,86 +131,47 @@ export default function ReturnConfirmationScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-        {/* Instruction Banner */}
         <View style={styles.instructionBanner}>
           <Ionicons name="information-circle-outline" size={22} color={colors.primary} />
           <Text style={styles.instructionText}>
-            Compare the item's return condition against pickup photos before confirming.
+            Take return condition photos and confirm the item has been returned safely.
           </Text>
         </View>
 
-        {/* Condition Comparison */}
+        {/* Take Return Photos */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Condition Comparison</Text>
-          <View style={styles.comparisonRow}>
-            {/* Pickup Photos */}
-            <View style={styles.comparisonCol}>
-              <View style={styles.comparisonHeader}>
-                <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.comparisonLabel}>Pickup Condition</Text>
-              </View>
-              <View style={styles.comparisonPhotos}>
-                {MOCK_PICKUP_PHOTOS.map((p) => (
-                  <View key={p.id} style={[styles.conditionPhoto, { backgroundColor: p.color }]}>
-                    <Ionicons name="image" size={20} color={colors.textSecondary} />
-                    <Text style={styles.conditionPhotoLabel}>{p.label}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.comparisonDivider}>
-              <Ionicons name="swap-horizontal" size={20} color={colors.textMuted} />
-            </View>
-
-            {/* Return Photos */}
-            <View style={styles.comparisonCol}>
-              <View style={styles.comparisonHeader}>
-                <Ionicons name="log-in-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.comparisonLabel}>Return Condition</Text>
-              </View>
-              <View style={styles.comparisonPhotos}>
-                {returnPhotos.length === 0 ? (
-                  <TouchableOpacity style={styles.addReturnPhoto} onPress={handleTakeReturnPhoto}>
-                    <Ionicons name="camera-outline" size={22} color={colors.textMuted} />
-                    <Text style={styles.addReturnPhotoText}>Add photo</Text>
-                  </TouchableOpacity>
-                ) : (
-                  returnPhotos.slice(0, 2).map((p) => (
-                    <View key={p.id} style={[styles.conditionPhoto, { backgroundColor: p.color }]}>
-                      <Ionicons name="image" size={20} color={colors.textSecondary} />
-                      <Text style={styles.conditionPhotoLabel}>{p.label}</Text>
-                    </View>
-                  ))
-                )}
-              </View>
-            </View>
+          <Text style={styles.sectionTitle}>Return Condition Photos</Text>
+          <View style={styles.photoButtonRow}>
+            <TouchableOpacity style={styles.photoBtn} onPress={handleTakeReturnPhoto} activeOpacity={0.85}>
+              <Ionicons name="camera-outline" size={20} color={colors.primary} />
+              <Text style={styles.photoBtnText}>Take Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.photoBtn, styles.photoBtnSecondary]} onPress={handlePickFromLibrary} activeOpacity={0.85}>
+              <Ionicons name="images-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.photoBtnSecondaryText}>Gallery</Text>
+            </TouchableOpacity>
           </View>
+
+          {returnPhotos.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoStrip}>
+              {returnPhotos.map((p, idx) => (
+                <View key={idx} style={styles.returnThumbWrapper}>
+                  <Image source={{ uri: p.uri }} style={styles.returnThumb} />
+                  <TouchableOpacity
+                    style={styles.removeThumbBtn}
+                    onPress={() => setReturnPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {returnPhotos.length === 0 && (
+            <Text style={styles.noPhotosHint}>No return photos yet — tap above to add</Text>
+          )}
         </View>
-
-        {/* Take Return Photos Button */}
-        <TouchableOpacity style={styles.takePhotoBtn} onPress={handleTakeReturnPhoto} activeOpacity={0.85}>
-          <Ionicons name="camera" size={20} color={colors.primary} />
-          <Text style={styles.takePhotoBtnText}>
-            Take Return Photos {returnPhotos.length > 0 ? `(${returnPhotos.length})` : ''}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Return Photo Strip */}
-        {returnPhotos.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.photoStrip}
-          >
-            {returnPhotos.map((p) => (
-              <View key={p.id} style={[styles.stripThumb, { backgroundColor: p.color }]}>
-                <Ionicons name="image" size={20} color={colors.textSecondary} />
-              </View>
-            ))}
-          </ScrollView>
-        )}
 
         {/* Damage Note */}
         <View style={styles.card}>
@@ -205,13 +193,12 @@ export default function ReturnConfirmationScreen({ navigation }) {
           />
         </View>
 
-        {/* Payment Info */}
         <View style={styles.paymentInfoCard}>
           <Ionicons name="wallet-outline" size={20} color={colors.success} />
           <View style={styles.paymentInfoText}>
             <Text style={styles.paymentInfoTitle}>Payment Release</Text>
             <Text style={styles.paymentInfoBody}>
-              Confirming return will release $120.00 to your account within 2-3 business days.
+              Confirming return will release your earnings to your account within 2-3 business days.
             </Text>
           </View>
         </View>
@@ -219,15 +206,21 @@ export default function ReturnConfirmationScreen({ navigation }) {
         <View style={{ height: spacing.xxxl + spacing.xl }} />
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.confirmBtn}
           onPress={handleConfirmReturn}
           activeOpacity={0.85}
+          disabled={uploading}
         >
-          <Ionicons name="checkmark-circle" size={20} color={colors.textInverse} />
-          <Text style={styles.confirmBtnText}>Confirm Return & Release Payment</Text>
+          {uploading ? (
+            <ActivityIndicator color={colors.textInverse} />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={20} color={colors.textInverse} />
+              <Text style={styles.confirmBtnText}>Confirm Return & Release Payment</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </Screen>
@@ -244,25 +237,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 36,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
+  backBtn:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle:{ ...typography.h3, color: colors.textPrimary, flex: 1, textAlign: 'center' },
+  headerRight:{ width: 36 },
+  scrollContent: { padding: spacing.lg, gap: spacing.lg },
   instructionBanner: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
@@ -271,12 +249,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.md,
   },
-  instructionText: {
-    ...typography.bodySmall,
-    color: colors.primaryDark,
-    flex: 1,
-    lineHeight: 20,
-  },
+  instructionText: { ...typography.bodySmall, color: colors.primaryDark, flex: 1, lineHeight: 20 },
   card: {
     backgroundColor: colors.background,
     borderRadius: radius.lg,
@@ -291,85 +264,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  comparisonRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-  },
-  comparisonCol: {
+  photoButtonRow: { flexDirection: 'row', gap: spacing.md },
+  photoBtn: {
     flex: 1,
-    gap: spacing.sm,
-  },
-  comparisonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  comparisonLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  comparisonPhotos: {
-    gap: spacing.sm,
-  },
-  conditionPhoto: {
-    height: 72,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  conditionPhotoLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  comparisonDivider: {
-    paddingTop: spacing.xl,
-    alignItems: 'center',
-  },
-  addReturnPhoto: {
-    height: 72,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    backgroundColor: colors.surface,
-  },
-  addReturnPhotoText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  takePhotoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
-  takePhotoBtnText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.primary,
+  photoBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.primary },
+  photoBtnSecondary: { backgroundColor: colors.surface, borderColor: colors.border },
+  photoBtnSecondaryText: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
+  photoStrip: { gap: spacing.sm, paddingVertical: spacing.xs },
+  returnThumbWrapper: { position: 'relative' },
+  returnThumb: { width: 80, height: 80, borderRadius: radius.md },
+  removeThumbBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: colors.background,
+    borderRadius: radius.full,
   },
-  photoStrip: {
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  stripThumb: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  noPhotosHint: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
   noteInput: {
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -380,10 +301,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     backgroundColor: colors.surface,
   },
-  noteInputFocused: {
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
-  },
+  noteInputFocused: { borderColor: colors.primary, backgroundColor: colors.background },
   paymentInfoCard: {
     backgroundColor: '#D1FAE5',
     borderRadius: radius.lg,
@@ -392,20 +310,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.md,
   },
-  paymentInfoText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  paymentInfoTitle: {
-    ...typography.bodySmall,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  paymentInfoBody: {
-    ...typography.bodySmall,
-    color: '#047857',
-    lineHeight: 20,
-  },
+  paymentInfoText: { flex: 1, gap: spacing.xs },
+  paymentInfoTitle: { ...typography.bodySmall, fontWeight: '700', color: '#065F46' },
+  paymentInfoBody: { ...typography.bodySmall, color: '#047857', lineHeight: 20 },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -428,10 +335,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadows.medium,
   },
-  confirmBtnText: {
-    ...typography.button,
-    color: colors.textInverse,
-  },
+  confirmBtnText: { ...typography.button, color: colors.textInverse },
   // Success state
   successContainer: {
     flex: 1,
@@ -440,20 +344,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.lg,
   },
-  successIconWrapper: {
-    marginBottom: spacing.md,
-  },
-  successTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  successSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
+  successIconWrapper: { marginBottom: spacing.md },
+  successTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
+  successSubtitle: { ...typography.body, color: colors.textSecondary, textAlign: 'center', lineHeight: 24 },
   successCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
@@ -464,20 +357,9 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: spacing.md,
   },
-  successCardText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  successCardTitle: {
-    ...typography.bodySmall,
-    fontWeight: '700',
-    color: colors.primaryDark,
-  },
-  successCardBody: {
-    ...typography.bodySmall,
-    color: colors.primary,
-    lineHeight: 20,
-  },
+  successCardText: { flex: 1, gap: spacing.xs },
+  successCardTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.primaryDark },
+  successCardBody: { ...typography.bodySmall, color: colors.primary, lineHeight: 20 },
   doneBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
@@ -488,8 +370,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...shadows.medium,
   },
-  doneBtnText: {
-    ...typography.button,
-    color: colors.textInverse,
-  },
+  doneBtnText: { ...typography.button, color: colors.textInverse },
 });

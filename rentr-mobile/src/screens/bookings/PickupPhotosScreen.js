@@ -10,70 +10,79 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { uploadPickupPhotosApi } from '../../services/booking.service';
 
-const MOCK_THUMBNAILS = [
-  { id: 't1', color: '#BFDBFE', label: 'Front view' },
-  { id: 't2', color: '#BBF7D0', label: 'Side view' },
-];
-
-export default function PickupPhotosScreen({ navigation }) {
-  const [photos, setPhotos] = useState(MOCK_THUMBNAILS);
+export default function PickupPhotosScreen({ navigation, route }) {
+  const { bookingId } = route?.params || {};
+  const [photos, setPhotos] = useState([]); // array of { uri }
+  const [uploading, setUploading] = useState(false);
   const canConfirm = photos.length > 0;
 
-  const handleTakePhoto = () => {
-    Alert.alert('Camera', 'Camera access would open here.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Simulate Add',
-        onPress: () => {
-          const colors_list = ['#FDE68A', '#DDD6FE', '#FBCFE8', '#CFFAFE'];
-          const newPhoto = {
-            id: `t${Date.now()}`,
-            color: colors_list[photos.length % colors_list.length],
-            label: `Photo ${photos.length + 1}`,
-          };
-          setPhotos((prev) => [...prev, newPhoto]);
-        },
-      },
-    ]);
+  const pickFromLibrary = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow photo library access in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setPhotos((prev) => [...prev, ...result.assets.map((a) => ({ uri: a.uri }))]);
+    }
   };
 
-  const handleUploadGallery = () => {
-    Alert.alert('Gallery', 'Photo library access would open here.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Simulate Add',
-        onPress: () => {
-          const newPhoto = {
-            id: `g${Date.now()}`,
-            color: '#FEF9C3',
-            label: `Gallery ${photos.length + 1}`,
-          };
-          setPhotos((prev) => [...prev, newPhoto]);
-        },
-      },
-    ]);
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access in Settings.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setPhotos((prev) => [...prev, { uri: result.assets[0].uri }]);
+    }
   };
 
-  const removePhoto = (id) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  const removePhoto = (idx) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleConfirm = () => {
-    Alert.alert(
-      'Pickup Confirmed!',
-      'Item condition has been recorded. Enjoy your rental!',
-      [{ text: 'OK', onPress: () => navigation.navigate('MyBookings') }]
-    );
+  const handleConfirm = async () => {
+    if (!canConfirm) return;
+    if (!bookingId) {
+      Alert.alert('Error', 'Booking ID is missing.');
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadPickupPhotosApi(bookingId, photos.map((p) => p.uri));
+      Alert.alert(
+        'Pickup Confirmed!',
+        'Item condition has been recorded. Enjoy your rental!',
+        [{ text: 'OK', onPress: () => navigation.navigate('MyBookings') }]
+      );
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message || 'Could not upload photos. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <Screen>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
@@ -84,7 +93,6 @@ export default function PickupPhotosScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
-        {/* Instruction Banner */}
         <View style={styles.instructionBanner}>
           <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
           <Text style={styles.instructionText}>
@@ -92,8 +100,7 @@ export default function PickupPhotosScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Camera Placeholder */}
-        <TouchableOpacity style={styles.cameraBox} onPress={handleTakePhoto} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.cameraBox} onPress={takePhoto} activeOpacity={0.8}>
           <View style={styles.cameraInner}>
             <Ionicons name="camera" size={56} color={colors.textMuted} />
             <Text style={styles.cameraTitle}>Take a Photo</Text>
@@ -101,7 +108,6 @@ export default function PickupPhotosScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
-        {/* Tips */}
         <View style={styles.tipsCard}>
           <Text style={styles.tipsTitle}>Photo Tips</Text>
           {[
@@ -117,25 +123,22 @@ export default function PickupPhotosScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleTakePhoto} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.actionBtn} onPress={takePhoto} activeOpacity={0.85}>
             <Ionicons name="camera-outline" size={20} color={colors.primary} />
             <Text style={styles.actionBtnText}>Take Photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={handleUploadGallery} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={pickFromLibrary} activeOpacity={0.85}>
             <Ionicons name="images-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.actionBtnSecondaryText}>Upload from Gallery</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Photo Count Info */}
         <View style={styles.countRow}>
           <Ionicons name="images-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.countText}>{photos.length} photo{photos.length !== 1 ? 's' : ''} added</Text>
         </View>
 
-        {/* Thumbnail Strip */}
         {photos.length > 0 && (
           <View style={styles.thumbnailSection}>
             <Text style={styles.thumbnailTitle}>Captured Photos</Text>
@@ -144,34 +147,27 @@ export default function PickupPhotosScreen({ navigation }) {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.thumbnailStrip}
             >
-              {photos.map((photo) => (
-                <View key={photo.id} style={styles.thumbnailWrapper}>
-                  <View style={[styles.thumbnail, { backgroundColor: photo.color }]}>
-                    <Ionicons name="image" size={24} color={colors.textSecondary} />
-                  </View>
-                  <Text style={styles.thumbnailLabel} numberOfLines={1}>{photo.label}</Text>
+              {photos.map((photo, idx) => (
+                <View key={idx} style={styles.thumbnailWrapper}>
+                  <Image source={{ uri: photo.uri }} style={styles.thumbnail} />
                   <TouchableOpacity
                     style={styles.removeBtn}
-                    onPress={() => removePhoto(photo.id)}
+                    onPress={() => removePhoto(idx)}
                   >
                     <Ionicons name="close-circle" size={20} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               ))}
-
-              {/* Add more placeholder */}
-              <TouchableOpacity style={styles.addMoreBox} onPress={handleTakePhoto}>
+              <TouchableOpacity style={styles.addMoreBox} onPress={takePhoto}>
                 <Ionicons name="add" size={28} color={colors.textMuted} />
               </TouchableOpacity>
             </ScrollView>
           </View>
         )}
 
-        {/* Spacer for button */}
         <View style={{ height: spacing.xxxl + spacing.xl }} />
       </ScrollView>
 
-      {/* Confirm Button */}
       <View style={styles.footer}>
         {!canConfirm && (
           <Text style={styles.footerHint}>Add at least 1 photo to confirm pickup</Text>
@@ -180,15 +176,22 @@ export default function PickupPhotosScreen({ navigation }) {
           style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
           onPress={canConfirm ? handleConfirm : undefined}
           activeOpacity={canConfirm ? 0.85 : 1}
+          disabled={uploading}
         >
-          <Ionicons
-            name="checkmark-circle"
-            size={20}
-            color={canConfirm ? colors.textInverse : colors.textMuted}
-          />
-          <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-            Confirm Pickup
-          </Text>
+          {uploading ? (
+            <ActivityIndicator color={colors.textInverse} />
+          ) : (
+            <>
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={canConfirm ? colors.textInverse : colors.textMuted}
+              />
+              <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
+                Confirm Pickup
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </Screen>
@@ -205,25 +208,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 36,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { ...typography.h3, color: colors.textPrimary, flex: 1, textAlign: 'center' },
+  headerRight: { width: 36 },
+  scrollContent: { padding: spacing.lg, gap: spacing.lg },
   instructionBanner: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.lg,
@@ -232,12 +220,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.md,
   },
-  instructionText: {
-    ...typography.body,
-    color: colors.primaryDark,
-    flex: 1,
-    lineHeight: 22,
-  },
+  instructionText: { ...typography.body, color: colors.primaryDark, flex: 1, lineHeight: 22 },
   cameraBox: {
     borderWidth: 2,
     borderColor: colors.border,
@@ -248,18 +231,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
-  cameraInner: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  cameraTitle: {
-    ...typography.h3,
-    color: colors.textSecondary,
-  },
-  cameraSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-  },
+  cameraInner: { alignItems: 'center', gap: spacing.sm },
+  cameraTitle: { ...typography.h3, color: colors.textSecondary },
+  cameraSubtitle: { ...typography.bodySmall, color: colors.textMuted },
   tipsCard: {
     backgroundColor: colors.background,
     borderRadius: radius.lg,
@@ -267,33 +241,11 @@ const styles = StyleSheet.create({
     ...shadows.small,
     gap: spacing.sm,
   },
-  tipsTitle: {
-    ...typography.bodySmall,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  tipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    flexShrink: 0,
-  },
-  tipText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
+  tipsTitle: { ...typography.bodySmall, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  tipDot: { width: 6, height: 6, borderRadius: radius.full, backgroundColor: colors.primary, flexShrink: 0 },
+  tipText: { ...typography.bodySmall, color: colors.textSecondary, flex: 1 },
+  buttonRow: { flexDirection: 'row', gap: spacing.md },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -306,58 +258,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
-  actionBtnText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  actionBtnSecondary: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  actionBtnSecondaryText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  countText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  thumbnailSection: {
-    gap: spacing.sm,
-  },
-  thumbnailTitle: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  thumbnailStrip: {
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  thumbnailWrapper: {
-    alignItems: 'center',
-    gap: spacing.xs,
-    position: 'relative',
-  },
+  actionBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.primary },
+  actionBtnSecondary: { backgroundColor: colors.surface, borderColor: colors.border },
+  actionBtnSecondaryText: { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
+  countRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  countText: { ...typography.bodySmall, color: colors.textSecondary },
+  thumbnailSection: { gap: spacing.sm },
+  thumbnailTitle: { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary },
+  thumbnailStrip: { gap: spacing.md, paddingVertical: spacing.sm },
+  thumbnailWrapper: { alignItems: 'center', position: 'relative' },
   thumbnail: {
     width: 88,
     height: 88,
     borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
     ...shadows.small,
-  },
-  thumbnailLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    maxWidth: 88,
   },
   removeBtn: {
     position: 'absolute',
@@ -390,11 +304,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     gap: spacing.sm,
   },
-  footerHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
+  footerHint: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
   confirmBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
@@ -405,15 +315,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     ...shadows.medium,
   },
-  confirmBtnDisabled: {
-    backgroundColor: colors.border,
-    ...shadows.small,
-  },
-  confirmBtnText: {
-    ...typography.button,
-    color: colors.textInverse,
-  },
-  confirmBtnTextDisabled: {
-    color: colors.textMuted,
-  },
+  confirmBtnDisabled: { backgroundColor: colors.border, ...shadows.small },
+  confirmBtnText: { ...typography.button, color: colors.textInverse },
+  confirmBtnTextDisabled: { color: colors.textMuted },
 });

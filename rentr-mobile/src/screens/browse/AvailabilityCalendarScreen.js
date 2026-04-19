@@ -2,20 +2,18 @@
 // Availability Calendar Screen
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, StatusBar,
+  ScrollView, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { getAvailabilityApi } from '../../services/item.service';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-// Dates the item is already booked (mock data)
-const BLOCKED_DATES = ['2026-04-15', '2026-04-16', '2026-04-17', '2026-04-22'];
 
 function buildCalendar(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -27,16 +25,50 @@ function buildCalendar(year, month) {
 }
 
 export default function AvailabilityCalendarScreen({ navigation, route }) {
+  const { itemId } = route?.params || {};
   const today = new Date();
-  const [year,      setYear]      = useState(today.getFullYear());
-  const [month,     setMonth]     = useState(today.getMonth());
-  const [startDate, setStartDate] = useState(null);
-  const [endDate,   setEndDate]   = useState(null);
+  const [year,        setYear]        = useState(today.getFullYear());
+  const [month,       setMonth]       = useState(today.getMonth());
+  const [startDate,   setStartDate]   = useState(null);
+  const [endDate,     setEndDate]     = useState(null);
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [loadingDates, setLoadingDates] = useState(false);
+
+  useEffect(() => {
+    if (!itemId) return;
+    const fetchAvailability = async () => {
+      setLoadingDates(true);
+      try {
+        const res = await getAvailabilityApi(itemId);
+        // API returns array of booked date strings or {startDate, endDate} objects
+        const data = res.data?.bookedDates || res.data || [];
+        // Flatten ranges into individual date strings
+        const allDates = [];
+        data.forEach((entry) => {
+          if (typeof entry === 'string') {
+            allDates.push(entry.slice(0, 10));
+          } else if (entry.startDate && entry.endDate) {
+            const s = new Date(entry.startDate);
+            const e = new Date(entry.endDate);
+            for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+              allDates.push(d.toISOString().slice(0, 10));
+            }
+          }
+        });
+        setBlockedDates(allDates);
+      } catch {
+        // silently keep no blocked dates on error
+      } finally {
+        setLoadingDates(false);
+      }
+    };
+    fetchAvailability();
+  }, [itemId]);
 
   const cells = buildCalendar(year, month);
 
   const dateStr = (day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const isBlocked = (day) => BLOCKED_DATES.includes(dateStr(day));
+  const isBlocked = (day) => blockedDates.includes(dateStr(day));
   const isPast    = (day) => new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   const isStart   = (day) => startDate === dateStr(day);
@@ -69,7 +101,6 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
     <Screen>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -81,7 +112,13 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Month navigation */}
+        {loadingDates && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading availability...</Text>
+          </View>
+        )}
+
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
@@ -92,12 +129,10 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        {/* Day headers */}
         <View style={styles.dayHeaders}>
           {DAYS.map((d) => <Text key={d} style={styles.dayHeader}>{d}</Text>)}
         </View>
 
-        {/* Calendar grid */}
         <View style={styles.grid}>
           {cells.map((day, i) => {
             if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
@@ -133,7 +168,6 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
           })}
         </View>
 
-        {/* Legend */}
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
@@ -146,7 +180,6 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.selectionInfo}>
           {startDate ? (
@@ -159,7 +192,7 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
         </View>
         <TouchableOpacity
           style={[styles.continueButton, (!startDate || !endDate) && styles.buttonDisabled]}
-          onPress={() => navigation.navigate('BookingRequest', { startDate, endDate })}
+          onPress={() => navigation.navigate('BookingRequest', { startDate, endDate, itemId })}
           disabled={!startDate || !endDate}
           activeOpacity={0.85}
         >
@@ -177,6 +210,8 @@ const styles = StyleSheet.create({
   backButton:     { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   headerTitle:    { ...typography.h3, color: colors.textPrimary },
   clearText:      { ...typography.body, color: colors.primary, fontWeight: '600' },
+  loadingRow:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center', paddingVertical: spacing.sm },
+  loadingText:    { ...typography.bodySmall, color: colors.textSecondary },
   monthNav:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
   navBtn:         { width: 40, height: 40, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   monthTitle:     { ...typography.h3, color: colors.textPrimary },

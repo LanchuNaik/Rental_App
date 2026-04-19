@@ -2,25 +2,51 @@
 // Booking Request Screen
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, TextInput, StatusBar,
+  ScrollView, TextInput, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const MOCK_ITEM = { title: 'Canon EOS R6 Camera', price: 65, deposit: 200, serviceFee: 12 };
+import { getItemByIdApi } from '../../services/item.service';
 
 export default function BookingRequestScreen({ navigation, route }) {
-  const { startDate = '2026-04-18', endDate = '2026-04-21' } = route?.params || {};
+  const { startDate = '', endDate = '', itemId } = route?.params || {};
   const [message, setMessage] = useState('');
-  const item = MOCK_ITEM;
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const nights = Math.round((new Date(endDate) - new Date(startDate)) / 86400000);
-  const rentTotal    = item.price * nights;
-  const total        = rentTotal + item.deposit + item.serviceFee;
+  useEffect(() => {
+    if (!itemId) { setLoading(false); return; }
+    const fetchItem = async () => {
+      try {
+        const res = await getItemByIdApi(itemId);
+        const data = res.data?.item || res.data;
+        setItem({
+          id:          data._id,
+          title:       data.title,
+          price:       data.price,
+          deposit:     data.deposit || 0,
+          serviceFee:  data.serviceFee || 0,
+        });
+      } catch (err) {
+        setError(err.message || 'Failed to load item');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItem();
+  }, [itemId]);
+
+  const nights = startDate && endDate
+    ? Math.round((new Date(endDate) - new Date(startDate)) / 86400000)
+    : 0;
+
+  const rentTotal = item ? item.price * nights : 0;
+  const total     = item ? rentTotal + item.deposit + item.serviceFee : 0;
 
   const Row = ({ label, value, bold }) => (
     <View style={styles.breakdownRow}>
@@ -28,6 +54,34 @@ export default function BookingRequestScreen({ navigation, route }) {
       <Text style={[styles.breakdownValue, bold && styles.breakdownValueBold]}>{value}</Text>
     </View>
   );
+
+  if (loading) {
+    return (
+      <Screen>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error || !item) {
+    return (
+      <Screen>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Review Booking</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={styles.errorText}>{error || 'Item not found'}</Text>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -44,7 +98,7 @@ export default function BookingRequestScreen({ navigation, route }) {
         {/* Item summary */}
         <View style={styles.itemCard}>
           <View style={styles.itemPhoto}>
-            <Ionicons name="camera" size={32} color={colors.textMuted} />
+            <Ionicons name="cube-outline" size={32} color={colors.textMuted} />
           </View>
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>{item.title}</Text>
@@ -57,14 +111,20 @@ export default function BookingRequestScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Price Breakdown</Text>
         <View style={styles.breakdownCard}>
           <Row label={`$${item.price} × ${nights} nights`}  value={`$${rentTotal}`} />
-          <Row label="Refundable deposit"                     value={`$${item.deposit}`} />
-          <Row label="Service fee"                            value={`$${item.serviceFee}`} />
+          {item.deposit > 0 && (
+            <Row label="Refundable deposit" value={`$${item.deposit}`} />
+          )}
+          {item.serviceFee > 0 && (
+            <Row label="Service fee" value={`$${item.serviceFee}`} />
+          )}
           <View style={styles.breakdownDivider} />
-          <Row label="Total"  value={`$${total}`} bold />
+          <Row label="Total" value={`$${total}`} bold />
         </View>
 
         {/* Message to owner */}
-        <Text style={styles.sectionTitle}>Message to owner <Text style={styles.optional}>(optional)</Text></Text>
+        <Text style={styles.sectionTitle}>
+          Message to owner <Text style={styles.optional}>(optional)</Text>
+        </Text>
         <TextInput
           style={styles.messageInput}
           placeholder="Hi, I'd like to rent your item for a weekend trip..."
@@ -76,7 +136,6 @@ export default function BookingRequestScreen({ navigation, route }) {
           textAlignVertical="top"
         />
 
-        {/* Info box */}
         <View style={styles.infoBox}>
           <Ionicons name="information-circle" size={18} color={colors.info} />
           <Text style={styles.infoText}>
@@ -85,7 +144,6 @@ export default function BookingRequestScreen({ navigation, route }) {
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total due now</Text>
@@ -93,7 +151,15 @@ export default function BookingRequestScreen({ navigation, route }) {
         </View>
         <TouchableOpacity
           style={styles.requestButton}
-          onPress={() => navigation.navigate('Checkout', { total, startDate, endDate })}
+          onPress={() =>
+            navigation.navigate('Checkout', {
+              total,
+              startDate,
+              endDate,
+              itemId: item.id,
+              message: message.trim(),
+            })
+          }
           activeOpacity={0.85}
         >
           <Text style={styles.requestButtonText}>Continue to Payment</Text>
@@ -104,6 +170,8 @@ export default function BookingRequestScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  centered:        { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
+  errorText:       { ...typography.body, color: colors.error, textAlign: 'center' },
   header:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: spacing.lg },
   backButton:      { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   headerTitle:     { ...typography.h3, color: colors.textPrimary },

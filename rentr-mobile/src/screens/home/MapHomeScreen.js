@@ -6,7 +6,7 @@
 // showing nearby items as a scrollable list.
 // ============================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, TextInput, StatusBar, Dimensions,
@@ -15,30 +15,45 @@ import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { getNearbyItemsApi } from '../../services/item.service';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-// Mock nearby items — replace with real API later
-const MOCK_ITEMS = [
-  { id: '1', title: 'Canon DSLR Camera', price: 35,  lat: 37.7749, lng: -122.4194, category: 'Cameras',  rating: 4.8 },
-  { id: '2', title: 'Power Drill Set',   price: 15,  lat: 37.7759, lng: -122.4180, category: 'Tools',    rating: 4.5 },
-  { id: '3', title: 'Mountain Bike',     price: 25,  lat: 37.7739, lng: -122.4210, category: 'Sports',   rating: 4.9 },
-  { id: '4', title: 'Camping Tent',      price: 20,  lat: 37.7769, lng: -122.4170, category: 'Outdoor',  rating: 4.7 },
-  { id: '5', title: 'DJI Drone',         price: 60,  lat: 37.7729, lng: -122.4220, category: 'Cameras',  rating: 4.6 },
-];
-
 const CATEGORIES = ['All', 'Tools', 'Cameras', 'Sports', 'Vehicles', 'Outdoor', 'Electronics'];
+
+// Default region (San Francisco) until location is granted
+const DEFAULT_REGION = {
+  latitude:       37.7749,
+  longitude:      -122.4194,
+  latitudeDelta:  0.02,
+  longitudeDelta: 0.02,
+};
 
 export default function MapHomeScreen({ navigation }) {
   const [location,         setLocation]         = useState(null);
+  const [items,            setItems]            = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchText,       setSearchText]       = useState('');
   const mapRef = useRef(null);
 
+  // Fetch nearby items when we have user location
+  const fetchNearby = useCallback(async (lat, lng) => {
+    try {
+      const res = await getNearbyItemsApi(lat, lng, 10);
+      setItems(res.data?.items || res.data || []);
+    } catch {
+      // silently keep empty items on error
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        // Still show default region items
+        fetchNearby(DEFAULT_REGION.latitude, DEFAULT_REGION.longitude);
+        return;
+      }
       const loc = await Location.getCurrentPositionAsync({});
       setLocation(loc.coords);
       mapRef.current?.animateToRegion({
@@ -47,20 +62,14 @@ export default function MapHomeScreen({ navigation }) {
         latitudeDelta:  0.02,
         longitudeDelta: 0.02,
       }, 1000);
+      fetchNearby(loc.coords.latitude, loc.coords.longitude);
     })();
-  }, []);
+  }, [fetchNearby]);
 
-  const filteredItems = MOCK_ITEMS.filter((item) =>
+  const filteredItems = items.filter((item) =>
     (selectedCategory === 'All' || item.category === selectedCategory) &&
     (searchText === '' || item.title.toLowerCase().includes(searchText.toLowerCase()))
   );
-
-  const initialRegion = {
-    latitude:       37.7749,
-    longitude:      -122.4194,
-    latitudeDelta:  0.02,
-    longitudeDelta: 0.02,
-  };
 
   return (
     <View style={styles.container}>
@@ -70,7 +79,7 @@ export default function MapHomeScreen({ navigation }) {
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={initialRegion}
+        initialRegion={DEFAULT_REGION}
         showsUserLocation
         showsMyLocationButton={false}
       >
@@ -86,17 +95,27 @@ export default function MapHomeScreen({ navigation }) {
         )}
 
         {/* Item price pins */}
-        {filteredItems.map((item) => (
-          <Marker
-            key={item.id}
-            coordinate={{ latitude: item.lat, longitude: item.lng }}
-            onPress={() => navigation.navigate('BrowseStack', { screen: 'ItemDetail', params: { itemId: item.id } })}
-          >
-            <View style={styles.pin}>
-              <Text style={styles.pinText}>${item.price}</Text>
-            </View>
-          </Marker>
-        ))}
+        {filteredItems.map((item) => {
+          const lat = item.location?.coordinates?.[1] ?? item.lat;
+          const lng = item.location?.coordinates?.[0] ?? item.lng;
+          if (!lat || !lng) return null;
+          return (
+            <Marker
+              key={item._id || item.id}
+              coordinate={{ latitude: lat, longitude: lng }}
+              onPress={() =>
+                navigation.navigate('BrowseStack', {
+                  screen: 'ItemDetail',
+                  params: { itemId: item._id || item.id },
+                })
+              }
+            >
+              <View style={styles.pin}>
+                <Text style={styles.pinText}>${item.price}</Text>
+              </View>
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* Search bar — floating on top of map */}
@@ -116,14 +135,12 @@ export default function MapHomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Filter button */}
         <TouchableOpacity style={styles.filterButton} onPress={() => navigation.navigate('SearchFilters')}>
           <Ionicons name="options" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Category chips — horizontal scroll */}
+      {/* Category chips */}
       <View style={styles.chipsWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
           {CATEGORIES.map((cat) => (
@@ -140,36 +157,48 @@ export default function MapHomeScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Bottom sheet — nearby items list */}
+      {/* Bottom sheet */}
       <View style={styles.bottomSheet}>
         <View style={styles.sheetHandle} />
         <Text style={styles.sheetTitle}>
-          {filteredItems.length} items nearby
+          {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} nearby
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.itemsScroll}>
-          {filteredItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.itemCard}
-              onPress={() => navigation.navigate('BrowseStack', { screen: 'ItemDetail', params: { itemId: item.id } })}
-              activeOpacity={0.85}
-            >
-              {/* Photo placeholder */}
-              <View style={styles.itemPhoto}>
-                <Ionicons name="image-outline" size={32} color={colors.textMuted} />
-              </View>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
-                <View style={styles.itemMeta}>
-                  <Text style={styles.itemPrice}>${item.price}/day</Text>
-                  <View style={styles.ratingRow}>
-                    <Ionicons name="star" size={12} color="#F59E0B" />
-                    <Text style={styles.ratingText}>{item.rating}</Text>
+          {filteredItems.length === 0 ? (
+            <View style={styles.emptyNearby}>
+              <Text style={styles.emptyNearbyText}>No items found nearby</Text>
+            </View>
+          ) : (
+            filteredItems.map((item) => (
+              <TouchableOpacity
+                key={item._id || item.id}
+                style={styles.itemCard}
+                onPress={() =>
+                  navigation.navigate('BrowseStack', {
+                    screen: 'ItemDetail',
+                    params: { itemId: item._id || item.id },
+                  })
+                }
+                activeOpacity={0.85}
+              >
+                <View style={styles.itemPhoto}>
+                  <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                </View>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
+                  <View style={styles.itemMeta}>
+                    <Text style={styles.itemPrice}>${item.price}/day</Text>
+                    {item.rating ? (
+                      <View style={styles.ratingRow}>
+                        <Ionicons name="star" size={12} color="#F59E0B" />
+                        <Text style={styles.ratingText}>{item.rating}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          )}
         </ScrollView>
       </View>
 
@@ -196,28 +225,22 @@ export default function MapHomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:     { flex: 1 },
   map:           { flex: 1 },
-
-  // Search bar
   searchContainer: { position: 'absolute', top: 52, left: spacing.lg, right: spacing.lg, flexDirection: 'row', gap: spacing.sm },
   searchBar:     { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.lg, paddingHorizontal: spacing.lg, height: 48, ...shadows.medium },
   searchInput:   { flex: 1, ...typography.body, color: colors.textPrimary },
   filterButton:  { width: 48, height: 48, backgroundColor: colors.background, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', ...shadows.medium },
-
-  // Category chips
   chipsWrapper:  { position: 'absolute', top: 112, left: 0, right: 0 },
   chipsScroll:   { paddingHorizontal: spacing.lg, gap: spacing.sm },
   chip:          { paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, backgroundColor: colors.background, borderRadius: radius.full, ...shadows.small },
   chipActive:    { backgroundColor: colors.primary },
   chipText:      { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
   chipTextActive:{ color: colors.textInverse },
-
-  // Bottom sheet
   bottomSheet:   { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingTop: spacing.md, paddingBottom: spacing.xxl, ...shadows.large },
   sheetHandle:   { width: 36, height: 4, backgroundColor: colors.border, borderRadius: radius.full, alignSelf: 'center', marginBottom: spacing.md },
   sheetTitle:    { ...typography.h3, color: colors.textPrimary, paddingHorizontal: spacing.xl, marginBottom: spacing.md },
   itemsScroll:   { paddingHorizontal: spacing.lg, gap: spacing.md },
-
-  // Item card (horizontal)
+  emptyNearby:   { paddingHorizontal: spacing.lg, paddingVertical: spacing.xl, alignItems: 'center', justifyContent: 'center' },
+  emptyNearbyText: { ...typography.bodySmall, color: colors.textMuted },
   itemCard:      { width: 160, backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', ...shadows.small },
   itemPhoto:     { height: 110, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   itemInfo:      { padding: spacing.md },
@@ -226,11 +249,7 @@ const styles = StyleSheet.create({
   itemPrice:     { ...typography.caption, color: colors.primary, fontWeight: '700' },
   ratingRow:     { flexDirection: 'row', alignItems: 'center', gap: 2 },
   ratingText:    { ...typography.caption, color: colors.textSecondary },
-
-  // Price pin on map
   pin:           { backgroundColor: colors.primary, paddingVertical: 4, paddingHorizontal: 8, borderRadius: radius.md, ...shadows.small },
   pinText:       { ...typography.caption, fontWeight: '700', color: colors.textInverse },
-
-  // Re-center FAB
   recenterButton:{ position: 'absolute', right: spacing.xl, bottom: 220, width: 48, height: 48, backgroundColor: colors.background, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', ...shadows.medium },
 });

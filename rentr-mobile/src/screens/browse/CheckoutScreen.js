@@ -5,28 +5,35 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, ActivityIndicator, StatusBar,
+  ScrollView, ActivityIndicator, StatusBar, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { createBookingApi } from '../../services/booking.service';
 
+// Saved cards are static UI — Stripe integration would replace this
 const SAVED_CARDS = [
   { id: '1', brand: 'Visa',       last4: '4242', expiry: '12/26' },
   { id: '2', brand: 'Mastercard', last4: '5555', expiry: '08/27' },
 ];
 
 export default function CheckoutScreen({ navigation, route }) {
-  const { total = 277 } = route?.params || {};
+  const { total = 0, startDate, endDate, itemId, message } = route?.params || {};
   const [selectedCard, setSelectedCard] = useState('1');
   const [loading,      setLoading]      = useState(false);
 
   const handlePay = async () => {
+    if (!itemId || !startDate || !endDate) {
+      Alert.alert('Error', 'Missing booking details. Please go back and try again.');
+      return;
+    }
     setLoading(true);
     try {
-      // TODO: call Stripe PaymentSheet or POST /api/bookings
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+      await createBookingApi({ itemId, startDate, endDate, message });
       navigation.navigate('BookingConfirmation');
+    } catch (err) {
+      Alert.alert('Booking Failed', err.message || 'Could not create booking. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -82,14 +89,12 @@ export default function CheckoutScreen({ navigation, route }) {
           <Text style={styles.addCardText}>Add new card</Text>
         </TouchableOpacity>
 
-        {/* Security note */}
         <View style={styles.securityRow}>
           <Ionicons name="lock-closed" size={16} color={colors.success} />
           <Text style={styles.securityText}>Payments are encrypted and secured by Stripe</Text>
         </View>
       </ScrollView>
 
-      {/* Pay button */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.payButton, loading && styles.buttonDisabled]}

@@ -2,7 +2,7 @@
 // IncomingRequestsScreen — Owner's pending booking requests
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,102 +10,122 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import {
+  getIncomingRequestsApi,
+  acceptBookingApi,
+  rejectBookingApi,
+} from '../../services/booking.service';
 
-const INITIAL_REQUESTS = [
-  {
-    id: 'r1',
-    renterName: 'Marcus Chen',
-    initials: 'MC',
-    avatarColor: '#BFDBFE',
-    itemTitle: 'Sony A7 III Camera',
-    dates: 'Apr 15 – Apr 18, 2026',
-    days: 3,
-    totalAmount: '$120.00',
-    submittedAgo: '2 hours ago',
-  },
-  {
-    id: 'r2',
-    renterName: 'Priya Sharma',
-    initials: 'PS',
-    avatarColor: '#BBF7D0',
-    itemTitle: 'DJI Mini 3 Drone',
-    dates: 'Apr 22 – Apr 24, 2026',
-    days: 2,
-    totalAmount: '$90.00',
-    submittedAgo: '5 hours ago',
-  },
-  {
-    id: 'r3',
-    renterName: 'Tyler Brooks',
-    initials: 'TB',
-    avatarColor: '#FDE68A',
-    itemTitle: 'Trek Mountain Bike',
-    dates: 'Apr 28 – May 1, 2026',
-    days: 3,
-    totalAmount: '$60.00',
-    submittedAgo: '1 day ago',
-  },
-];
+function getInitials(name = '') {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
 
-function RenterAvatar({ initials, color }) {
+function formatDateRange(start, end) {
+  const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+  const s = new Date(start).toLocaleDateString('en-US', opts);
+  const e = new Date(end).toLocaleDateString('en-US', opts);
+  return `${s} – ${e}`;
+}
+
+function daysBetween(start, end) {
+  return Math.round((new Date(end) - new Date(start)) / 86400000);
+}
+
+const AVATAR_COLORS = ['#BFDBFE', '#BBF7D0', '#FDE68A', '#DDD6FE', '#FBCFE8', '#CFFAFE'];
+
+function RenterAvatar({ name, index }) {
+  const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
   return (
     <View style={[styles.avatar, { backgroundColor: color }]}>
-      <Text style={styles.avatarText}>{initials}</Text>
+      <Text style={styles.avatarText}>{getInitials(name)}</Text>
     </View>
   );
 }
 
-function RequestCard({ request, onAccept, onDecline, onPress }) {
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoading }) {
+  const renterName = request.renter?.name || 'Renter';
+  const days = daysBetween(request.startDate, request.endDate);
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {/* Card Header */}
       <View style={styles.cardHeader}>
-        <RenterAvatar initials={request.initials} color={request.avatarColor} />
+        <RenterAvatar name={renterName} index={index} />
         <View style={styles.cardHeaderInfo}>
-          <Text style={styles.renterName}>{request.renterName}</Text>
-          <Text style={styles.submittedText}>Submitted {request.submittedAgo}</Text>
+          <Text style={styles.renterName}>{renterName}</Text>
+          <Text style={styles.submittedText}>
+            Submitted {timeAgo(request.createdAt)}
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
 
-      {/* Item Info */}
       <View style={styles.itemSection}>
         <View style={styles.itemRow}>
           <Ionicons name="cube-outline" size={15} color={colors.primary} />
-          <Text style={styles.itemTitle}>{request.itemTitle}</Text>
+          <Text style={styles.itemTitle}>{request.item?.title || 'Item'}</Text>
         </View>
         <View style={styles.itemRow}>
           <Ionicons name="calendar-outline" size={15} color={colors.textSecondary} />
-          <Text style={styles.itemMeta}>{request.dates}</Text>
-          <Text style={styles.daysBadge}>{request.days} days</Text>
+          <Text style={styles.itemMeta}>
+            {formatDateRange(request.startDate, request.endDate)}
+          </Text>
+          <Text style={styles.daysBadge}>{days} day{days !== 1 ? 's' : ''}</Text>
         </View>
       </View>
 
-      {/* Amount + Actions */}
       <View style={styles.cardFooter}>
         <View>
           <Text style={styles.amountLabel}>Total Amount</Text>
-          <Text style={styles.amountValue}>{request.totalAmount}</Text>
+          <Text style={styles.amountValue}>${request.totalPrice}</Text>
         </View>
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.declineBtn}
             onPress={onDecline}
             activeOpacity={0.8}
+            disabled={actionLoading === 'accept' || actionLoading === 'reject'}
           >
-            <Text style={styles.declineBtnText}>Decline</Text>
+            {actionLoading === 'reject' ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <Text style={styles.declineBtnText}>Decline</Text>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.acceptBtn}
             onPress={onAccept}
             activeOpacity={0.8}
+            disabled={actionLoading === 'accept' || actionLoading === 'reject'}
           >
-            <Ionicons name="checkmark" size={15} color={colors.textInverse} />
-            <Text style={styles.acceptBtnText}>Accept</Text>
+            {actionLoading === 'accept' ? (
+              <ActivityIndicator size="small" color={colors.textInverse} />
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={15} color={colors.textInverse} />
+                <Text style={styles.acceptBtnText}>Accept</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -114,13 +134,46 @@ function RequestCard({ request, onAccept, onDecline, onPress }) {
 }
 
 export default function IncomingRequestsScreen({ navigation }) {
-  const [requests, setRequests] = useState(INITIAL_REQUESTS);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState({}); // bookingId -> 'accept' | 'reject'
+
+  const fetchRequests = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const res = await getIncomingRequestsApi();
+      setRequests(res.data?.bookings || res.data || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load requests');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(useCallback(() => { fetchRequests(); }, []));
 
   const handleAccept = (id) => {
-    Alert.alert('Booking Accepted', 'The renter has been notified.', [
+    Alert.alert('Accept Booking', 'Accept this rental request?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'OK',
-        onPress: () => setRequests((prev) => prev.filter((r) => r.id !== id)),
+        text: 'Accept',
+        onPress: async () => {
+          setActionLoading((prev) => ({ ...prev, [id]: 'accept' }));
+          try {
+            await acceptBookingApi(id);
+            setRequests((prev) => prev.filter((r) => r._id !== id));
+            Alert.alert('Accepted', 'The renter has been notified.');
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Could not accept booking');
+          } finally {
+            setActionLoading((prev) => ({ ...prev, [id]: null }));
+          }
+        },
       },
     ]);
   };
@@ -134,7 +187,17 @@ export default function IncomingRequestsScreen({ navigation }) {
         {
           text: 'Decline',
           style: 'destructive',
-          onPress: () => setRequests((prev) => prev.filter((r) => r.id !== id)),
+          onPress: async () => {
+            setActionLoading((prev) => ({ ...prev, [id]: 'reject' }));
+            try {
+              await rejectBookingApi(id);
+              setRequests((prev) => prev.filter((r) => r._id !== id));
+            } catch (err) {
+              Alert.alert('Error', err.message || 'Could not decline booking');
+            } finally {
+              setActionLoading((prev) => ({ ...prev, [id]: null }));
+            }
+          },
         },
       ]
     );
@@ -142,7 +205,6 @@ export default function IncomingRequestsScreen({ navigation }) {
 
   return (
     <Screen>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Incoming Requests</Text>
@@ -155,30 +217,48 @@ export default function IncomingRequestsScreen({ navigation }) {
         )}
       </View>
 
-      {/* List */}
-      <ScrollView
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {requests.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="checkmark-circle-outline" size={64} color={colors.success} />
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptySubtitle}>You have no pending booking requests.</Text>
-          </View>
-        ) : (
-          requests.map((req) => (
-            <RequestCard
-              key={req.id}
-              request={req}
-              onAccept={() => handleAccept(req.id)}
-              onDecline={() => handleDecline(req.id)}
-              onPress={() => navigation.navigate('BookingDetail', { bookingId: req.id })}
-            />
-          ))
-        )}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => fetchRequests()} style={styles.retryBtn}>
+            <Text style={styles.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchRequests(true)} />
+          }
+        >
+          {requests.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={64} color={colors.success} />
+              <Text style={styles.emptyTitle}>All caught up!</Text>
+              <Text style={styles.emptySubtitle}>You have no pending booking requests.</Text>
+            </View>
+          ) : (
+            requests.map((req, idx) => (
+              <RequestCard
+                key={req._id}
+                request={req}
+                index={idx}
+                actionLoading={actionLoading[req._id]}
+                onAccept={() => handleAccept(req._id)}
+                onDecline={() => handleDecline(req._id)}
+                onPress={() => navigation.navigate('BookingDetail', { bookingId: req._id })}
+              />
+            ))
+          )}
+        </ScrollView>
+      )}
     </Screen>
   );
 }
@@ -222,6 +302,29 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     paddingBottom: spacing.xxxl,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.error,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+  },
+  retryBtnText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.primary,
   },
   card: {
     backgroundColor: colors.background,
@@ -321,6 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 80,
   },
   declineBtnText: {
     ...typography.bodySmall,
@@ -335,6 +439,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    minWidth: 80,
+    justifyContent: 'center',
   },
   acceptBtnText: {
     ...typography.bodySmall,

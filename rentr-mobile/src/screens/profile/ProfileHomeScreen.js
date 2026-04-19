@@ -19,12 +19,13 @@ import { getProfileApi } from '../../services/user.service';
 import { clearSession } from '../../services/storage.service';
 
 const MENU_ITEMS = [
-  { label: 'My Listings', icon: 'grid-outline', route: 'MyListings', color: colors.primary },
-  { label: 'Saved Items', icon: 'heart-outline', route: 'SavedItems', color: '#EF4444' },
-  { label: 'Earnings', icon: 'wallet-outline', route: 'Earnings', color: colors.success },
-  { label: 'Notifications', icon: 'notifications-outline', route: 'Notifications', color: colors.info },
-  { label: 'Settings', icon: 'settings-outline', route: 'Settings', color: colors.textSecondary },
-  { label: 'Help & Support', icon: 'help-circle-outline', route: 'HelpSupport', color: colors.warning },
+  { label: 'My Listings',       icon: 'grid-outline',          route: 'MyListings',       color: colors.primary },
+  { label: 'Incoming Requests', icon: 'arrow-down-circle-outline', route: 'IncomingRequests', color: '#8B5CF6', stack: 'Bookings' },
+  { label: 'Saved Items',       icon: 'heart-outline',         route: 'SavedItems',       color: '#EF4444' },
+  { label: 'Earnings',          icon: 'wallet-outline',        route: 'Earnings',         color: colors.success },
+  { label: 'Notifications',     icon: 'notifications-outline', route: 'Notifications',    color: colors.info },
+  { label: 'Settings',          icon: 'settings-outline',      route: 'Settings',         color: colors.textSecondary },
+  { label: 'Help & Support',    icon: 'help-circle-outline',   route: 'HelpSupport',      color: colors.warning },
 ];
 
 function StarRow({ rating, reviewCount }) {
@@ -164,7 +165,11 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
                 styles.menuRow,
                 idx < MENU_ITEMS.length - 1 && styles.menuRowBorder,
               ]}
-              onPress={() => navigation.navigate(item.route)}
+              onPress={() =>
+                item.stack
+                  ? navigation.navigate(item.stack, { screen: item.route })
+                  : navigation.navigate(item.route)
+              }
               activeOpacity={0.7}
             >
               <View style={[styles.menuIconWrapper, { backgroundColor: `${item.color}18` }]}>
