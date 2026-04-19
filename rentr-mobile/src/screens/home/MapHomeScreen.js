@@ -111,7 +111,7 @@ export default function MapHomeScreen({ navigation }) {
               }
             >
               <View style={styles.pin}>
-                <Text style={styles.pinText}>${item.price}</Text>
+                <Text style={styles.pinText}>₹{item.price}</Text>
               </View>
             </Marker>
           );
@@ -187,7 +187,7 @@ export default function MapHomeScreen({ navigation }) {
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
                   <View style={styles.itemMeta}>
-                    <Text style={styles.itemPrice}>${item.price}/day</Text>
+                    <Text style={styles.itemPrice}>₹{item.price}/day</Text>
                     {item.rating ? (
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={12} color="#F59E0B" />
