@@ -120,7 +120,7 @@ export default function SavedItemsScreen({ navigation }) {
           </Text>
           <TouchableOpacity
             style={styles.browseBtn}
-            onPress={() => navigation.navigate('BrowseFeed')}
+            onPress={() => navigation.navigate('Browse')}
             activeOpacity={0.85}
           >
             <Ionicons name="search-outline" size={18} color={colors.textInverse} />
@@ -156,7 +156,10 @@ export default function SavedItemsScreen({ navigation }) {
                       <SavedCard
                         item={savedItems[idx + 1]}
                         onUnsave={() => handleUnsave(savedItems[idx + 1].id)}
-                        onPress={() => navigation.navigate('ItemDetail', { itemId: savedItems[idx + 1].id })}
+                        onPress={() => navigation.navigate('Browse', {
+                          screen: 'ItemDetail',
+                          params: { itemId: savedItems[idx + 1].id },
+                        })}
                       />
                     </View>
                   ) : (
