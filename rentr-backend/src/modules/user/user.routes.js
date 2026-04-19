@@ -103,7 +103,7 @@ const multer = require("multer");
 const path = require("path");
 
 const authMiddleware = require("../../middleware/auth/middleware");
-const { getProfile, updateProfile, updateAvatar, getPublicProfile } = require("./user.controller");
+const { getProfile, updateProfile, updateAvatar, getPublicProfile, updateRole } = require("./user.controller");
 
 // --- Multer setup for avatar uploads ---
 // diskStorage tells multer WHERE to save files and WHAT to name them
@@ -137,6 +137,7 @@ const upload = multer({
 // --- Routes ---
 router.get("/profile", authMiddleware, getProfile);
 router.put("/profile", authMiddleware, updateProfile);
+router.put("/profile/role", authMiddleware, updateRole);
 router.put("/profile/avatar", authMiddleware, upload.single("avatar"), updateAvatar);
 router.get("/users/:id", getPublicProfile);  // public — no auth needed
 

@@ -90,4 +90,26 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, updateAvatar, getPublicProfile };
+// PUT /api/profile/role — logged in user sets their role
+const updateRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    const allowed = ['renter', 'owner', 'both'];
+    if (!role || !allowed.includes(role)) {
+      return res.status(400).json({ success: false, message: "Role must be one of: renter, owner, both" });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { role },
+      { new: true }
+    ).select("-password -resetPasswordToken -resetPasswordExpires");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.json({ success: true, message: "Role updated", data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = { getProfile, updateProfile, updateAvatar, getPublicProfile, updateRole };

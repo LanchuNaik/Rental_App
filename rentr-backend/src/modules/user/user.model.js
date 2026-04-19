@@ -26,6 +26,11 @@ const userSchema = new mongoose.Schema({
     type: String,     // stores the file path e.g. "uploads/avatars/abc123.jpg"
     default: null,
   },
+  role: {
+    type: String,
+    enum: ['renter', 'owner', 'both'],
+    default: null,
+  },
   resetPasswordToken: {
     type: String,
     default: null,

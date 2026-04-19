@@ -5,11 +5,12 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, ActivityIndicator, StatusBar,
+  ScrollView, ActivityIndicator, StatusBar, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { updateRoleApi } from '../../services/user.service';
 
 const roles = [
   { id: 'renter', icon: 'search',          title: 'I want to Rent',  description: 'Browse and book items from people near you.',            color: colors.primary, lightColor: colors.primaryLight },
@@ -25,10 +26,10 @@ export default function RolePickerScreen({ onLoginSuccess }) {
     if (!selectedRole) return;
     setLoading(true);
     try {
-      // TODO: PUT /api/users/me/role
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      // Signal App.js to switch to MainTabs
+      await updateRoleApi(selectedRole);
       if (onLoginSuccess) onLoginSuccess();
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not save your role. Please try again.');
     } finally {
       setLoading(false);
     }

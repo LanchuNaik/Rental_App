@@ -9,8 +9,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, TextInput, StatusBar, Dimensions,
+  ScrollView, TextInput, StatusBar, Dimensions, Image,
 } from 'react-native';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -104,7 +106,7 @@ export default function MapHomeScreen({ navigation }) {
               key={item._id || item.id}
               coordinate={{ latitude: lat, longitude: lng }}
               onPress={() =>
-                navigation.navigate('BrowseStack', {
+                navigation.navigate('Browse', {
                   screen: 'ItemDetail',
                   params: { itemId: item._id || item.id },
                 })
@@ -174,7 +176,7 @@ export default function MapHomeScreen({ navigation }) {
                 key={item._id || item.id}
                 style={styles.itemCard}
                 onPress={() =>
-                  navigation.navigate('BrowseStack', {
+                  navigation.navigate('Browse', {
                     screen: 'ItemDetail',
                     params: { itemId: item._id || item.id },
                   })
@@ -182,7 +184,15 @@ export default function MapHomeScreen({ navigation }) {
                 activeOpacity={0.85}
               >
                 <View style={styles.itemPhoto}>
-                  <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                  {item.images?.[0] ? (
+                    <Image
+                      source={{ uri: `${BASE_URL}/${item.images[0]}` }}
+                      style={styles.itemPhotoImg}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+                  )}
                 </View>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
@@ -242,7 +252,8 @@ const styles = StyleSheet.create({
   emptyNearby:   { paddingHorizontal: spacing.lg, paddingVertical: spacing.xl, alignItems: 'center', justifyContent: 'center' },
   emptyNearbyText: { ...typography.bodySmall, color: colors.textMuted },
   itemCard:      { width: 160, backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', ...shadows.small },
-  itemPhoto:     { height: 110, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  itemPhoto:     { height: 110, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  itemPhotoImg:  { width: '100%', height: '100%' },
   itemInfo:      { padding: spacing.md },
   itemTitle:     { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary, marginBottom: spacing.xs },
   itemMeta:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

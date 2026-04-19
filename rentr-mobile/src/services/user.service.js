@@ -19,5 +19,8 @@ export const updateAvatarApi = (imageUri) => {
   });
 };
 
+export const updateRoleApi = (role) =>
+  apiClient.put('/profile/role', { role });
+
 export const getPublicProfileApi = (userId) =>
   apiClient.get(`/users/${userId}`);
