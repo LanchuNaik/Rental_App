@@ -1,44 +1,46 @@
-// ============================================
-// App.js — Root of the entire application
-// ============================================
-// HOW THIS WORKS (beginner explanation):
-//
-// NavigationContainer → the ROOT wrapper. Manages the navigation state
-//   (which screen is active, history stack, etc.)
-//   Every app using React Navigation MUST have exactly ONE NavigationContainer.
-//
-// AppNavigator → our custom navigator (AppNavigator.js) that decides:
-//   - if NOT logged in → show AuthStack (Splash, Login, Register, etc.)
-//   - if logged in → show MainTabs (Home, Browse, Bookings, Profile)
-//
-// isLoggedIn state → toggled when user successfully logs in.
-// In a real app this comes from AsyncStorage (saved JWT token).
-// ============================================
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
+import { getToken } from './src/services/storage.service';
+import { colors } from './src/theme/theme';
 
 export default function App() {
-  // This controls which navigator is shown: Auth or Main
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [checking,   setChecking]   = useState(true); // true while reading AsyncStorage
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const token = await getToken();
+        if (token) setIsLoggedIn(true);
+      } catch {
+        // no token — stay logged out
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkSession();
+  }, []);
+
+  // Show a blank loading screen while we check AsyncStorage
+  // This prevents the splash/onboarding from flashing for logged-in users
+  if (checking) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
-    // SafeAreaProvider must wrap everything — used by react-native-safe-area-context
     <SafeAreaProvider>
-      {/*
-        NavigationContainer:
-        - Wraps the entire navigation tree
-        - Must be at the very top, wrapping all navigators
-        - onReady fires when navigation is ready (useful for analytics)
-      */}
       <NavigationContainer>
         <AppNavigator
           isLoggedIn={isLoggedIn}
-          // This callback is passed deep into auth screens (Login, RolePicker)
-          // When called → flips isLoggedIn → NavigationContainer re-renders → shows MainTabs
           onLoginSuccess={() => setIsLoggedIn(true)}
+          onLogout={() => setIsLoggedIn(false)}
         />
       </NavigationContainer>
     </SafeAreaProvider>

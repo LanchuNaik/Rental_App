@@ -105,6 +105,8 @@ import NotificationsScreen   from '../screens/profile/NotificationsScreen';
 import SettingsScreen        from '../screens/profile/SettingsScreen';
 import RaiseDisputeScreen    from '../screens/profile/RaiseDisputeScreen';
 import MapPickerScreen       from '../screens/profile/MapPickerScreen';
+import ListingDetailScreen   from '../screens/profile/ListingDetailScreen';
+import EditListingScreen     from '../screens/profile/EditListingScreen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create navigator instances
@@ -175,10 +177,12 @@ function BookingsStack() {
 }
 
 // ── Profile Stack ─────────────────────────────────────────────────────────────
-function ProfileStack() {
+function ProfileStack({ onLogout }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileHome"   component={ProfileHomeScreen} />
+      <Stack.Screen name="ProfileHome">
+        {(props) => <ProfileHomeScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
       <Stack.Screen name="EditProfile"   component={EditProfileScreen} />
       <Stack.Screen name="MyListings"    component={MyListingsScreen} />
       <Stack.Screen name="AddListing"    component={AddListingScreen} />
@@ -188,13 +192,15 @@ function ProfileStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings"      component={SettingsScreen} />
       <Stack.Screen name="RaiseDispute"  component={RaiseDisputeScreen} />
-      <Stack.Screen name="MapPicker"     component={MapPickerScreen} />
+      <Stack.Screen name="MapPicker"       component={MapPickerScreen} />
+      <Stack.Screen name="ListingDetail"  component={ListingDetailScreen} />
+      <Stack.Screen name="EditListing"    component={EditListingScreen} />
     </Stack.Navigator>
   );
 }
 
 // ── Bottom Tab Navigator ──────────────────────────────────────────────────────
-function MainTabs() {
+function MainTabs({ onLogout }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -229,7 +235,9 @@ function MainTabs() {
       <Tab.Screen name="Home"     component={HomeStack} />
       <Tab.Screen name="Browse"   component={BrowseStack} />
       <Tab.Screen name="Bookings" component={BookingsStack} />
-      <Tab.Screen name="Profile"  component={ProfileStack} />
+      <Tab.Screen name="Profile">
+        {(props) => <ProfileStack {...props} onLogout={onLogout} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -237,11 +245,13 @@ function MainTabs() {
 // ── Root Navigator ────────────────────────────────────────────────────────────
 // This is what App.js renders.
 // It decides whether to show AuthStack or MainTabs based on isLoggedIn.
-export default function AppNavigator({ isLoggedIn, onLoginSuccess }) {
+export default function AppNavigator({ isLoggedIn, onLoginSuccess, onLogout }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {isLoggedIn ? (
-        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="Main">
+          {(props) => <MainTabs {...props} onLogout={onLogout} />}
+        </Stack.Screen>
       ) : (
         <Stack.Screen name="Auth">
           {(props) => <AuthStack {...props} onLoginSuccess={onLoginSuccess} />}

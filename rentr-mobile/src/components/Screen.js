@@ -1,30 +1,11 @@
-// ============================================
-// Screen — reusable wrapper for all screens
-// ============================================
-// Handles: SafeAreaView + Android status bar padding + default background.
-// Every screen in Rentr should use this as its root container.
-//
-// Usage:
-//   <Screen>
-//     <YourContent />
-//   </Screen>
-//
-//   <Screen backgroundColor={colors.primary}>  ← override color
-//     ...
-//   </Screen>
-// ============================================
-
-import {
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  StyleSheet,
-} from 'react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/theme';
 
 export default function Screen({ children, backgroundColor, style }) {
   return (
     <SafeAreaView
+      edges={['top', 'left', 'right']}
       style={[
         styles.container,
         { backgroundColor: backgroundColor || colors.background },
@@ -37,9 +18,5 @@ export default function Screen({ children, backgroundColor, style }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // Android: push content below the status bar (WiFi/battery area)
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
+  container: { flex: 1 },
 });

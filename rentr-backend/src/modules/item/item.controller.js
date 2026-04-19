@@ -150,9 +150,26 @@ const updateItem = async (req, res) => {
       });
     }
 
+    const { title, description, price, category, availableFrom, availableTo, address, latitude, longitude } = req.body;
+
+    const updateData = {};
+    if (title       !== undefined) updateData.title       = title;
+    if (description !== undefined) updateData.description = description;
+    if (price       !== undefined) updateData.price       = Number(price);
+    if (category    !== undefined) updateData.category    = category;
+    if (availableFrom !== undefined) updateData.availableFrom = availableFrom || null;
+    if (availableTo   !== undefined) updateData.availableTo   = availableTo   || null;
+    if (address || latitude || longitude) {
+      updateData.location = {
+        type: 'Point',
+        coordinates: [Number(longitude) || 0, Number(latitude) || 0],
+        address: address || null,
+      };
+    }
+
     const updatedItem = await Item.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     );
 

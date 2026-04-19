@@ -120,8 +120,8 @@ export default function MapPickerScreen({ navigation, route }) {
 
   const handleConfirm = () => {
     if (!marker) { Alert.alert('Pick a location', 'Tap on the map to drop a pin.'); return; }
-    // Send back to AddListingScreen via navigation params
-    navigation.navigate('AddListing', {
+    const returnTo = route?.params?.returnTo || 'AddListing';
+    navigation.navigate(returnTo, {
       pickedLocation: {
         latitude:  marker.latitude,
         longitude: marker.longitude,

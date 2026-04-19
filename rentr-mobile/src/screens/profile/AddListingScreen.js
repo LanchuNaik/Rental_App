@@ -254,16 +254,24 @@ export default function AddListingScreen({ navigation, route }) {
           <DateTimePicker
             value={availableFrom || new Date()}
             mode="date"
+            display="default"
             minimumDate={new Date()}
-            onChange={(_, date) => { setShowFromPicker(false); if (date) setAvailableFrom(date); }}
+            onChange={(_, date) => {
+              setShowFromPicker(false);
+              if (date) setAvailableFrom(date);
+            }}
           />
         )}
         {showToPicker && (
           <DateTimePicker
             value={availableTo || availableFrom || new Date()}
             mode="date"
+            display="default"
             minimumDate={availableFrom || new Date()}
-            onChange={(_, date) => { setShowToPicker(false); if (date) setAvailableTo(date); }}
+            onChange={(_, date) => {
+              setShowToPicker(false);
+              if (date) setAvailableTo(date);
+            }}
           />
         )}
 
