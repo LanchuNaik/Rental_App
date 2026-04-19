@@ -56,7 +56,7 @@ export default function CheckoutScreen({ navigation, route }) {
         {/* Total amount */}
         <View style={styles.totalCard}>
           <Text style={styles.totalLabel}>Total to pay</Text>
-          <Text style={styles.totalAmount}>${total}</Text>
+          <Text style={styles.totalAmount}>₹{total}</Text>
           <Text style={styles.totalNote}>Deposit included · Refundable after return</Text>
         </View>
 
@@ -107,7 +107,7 @@ export default function CheckoutScreen({ navigation, route }) {
           ) : (
             <>
               <Ionicons name="lock-closed" size={18} color={colors.textInverse} style={{ marginRight: spacing.sm }} />
-              <Text style={styles.payButtonText}>Pay ${total} Securely</Text>
+              <Text style={styles.payButtonText}>Pay ₹{total} Securely</Text>
             </>
           )}
         </TouchableOpacity>

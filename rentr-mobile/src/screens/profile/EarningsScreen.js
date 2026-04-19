@@ -25,9 +25,9 @@ const MONTHLY_DATA = [
 ];
 
 const PAYOUT_HISTORY = [
-  { id: 'pay1', date: 'Apr 1, 2026', amount: '$420.00', status: 'paid', description: 'Monthly payout' },
-  { id: 'pay2', date: 'Mar 1, 2026', amount: '$890.00', status: 'paid', description: 'Monthly payout' },
-  { id: 'pay3', date: 'Feb 1, 2026', amount: '$310.00', status: 'pending', description: 'Processing payout' },
+  { id: 'pay1', date: 'Apr 1, 2026', amount: '₹420.00', status: 'paid', description: 'Monthly payout' },
+  { id: 'pay2', date: 'Mar 1, 2026', amount: '₹890.00', status: 'paid', description: 'Monthly payout' },
+  { id: 'pay3', date: 'Feb 1, 2026', amount: '₹310.00', status: 'pending', description: 'Processing payout' },
 ];
 
 const CHART_MAX = Math.max(...MONTHLY_DATA.map((d) => d.amount));
@@ -47,7 +47,7 @@ function BarChart() {
           const isLast = idx === MONTHLY_DATA.length - 1;
           return (
             <View key={item.month} style={styles.barGroup}>
-              <Text style={styles.barAmount}>${Math.round(item.amount / 10) * 10 >= 1000 ? `${(item.amount / 1000).toFixed(1)}k` : item.amount}</Text>
+              <Text style={styles.barAmount}>₹{Math.round(item.amount / 10) * 10 >= 1000 ? `${(item.amount / 1000).toFixed(1)}k` : item.amount}</Text>
               <View style={styles.barTrack}>
                 <View
                   style={[
@@ -100,7 +100,7 @@ export default function EarningsScreen({ navigation }) {
           <View style={styles.totalCardOverlay} />
           <View style={styles.totalCardContent}>
             <Text style={styles.totalLabel}>Total Earnings</Text>
-            <Text style={styles.totalAmount}>$4,120</Text>
+            <Text style={styles.totalAmount}>₹4,120</Text>
             <View style={styles.totalBadge}>
               <Ionicons name="trending-up" size={14} color={colors.success} />
               <Text style={styles.totalBadgeText}>+18% from last month</Text>
@@ -116,7 +116,7 @@ export default function EarningsScreen({ navigation }) {
               <Ionicons name="calendar" size={18} color={colors.primary} />
             </View>
             <Text style={styles.statCardLabel}>This Month</Text>
-            <Text style={styles.statCardValue}>$510</Text>
+            <Text style={styles.statCardValue}>₹510</Text>
             <Text style={styles.statCardMeta}>Apr 2026</Text>
           </View>
           <View style={styles.statCard}>
@@ -124,7 +124,7 @@ export default function EarningsScreen({ navigation }) {
               <Ionicons name="time" size={18} color={colors.warning} />
             </View>
             <Text style={styles.statCardLabel}>Pending Payout</Text>
-            <Text style={styles.statCardValue}>$310</Text>
+            <Text style={styles.statCardValue}>₹310</Text>
             <Text style={styles.statCardMeta}>Processing</Text>
           </View>
         </View>

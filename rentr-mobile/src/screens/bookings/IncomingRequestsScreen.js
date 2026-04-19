@@ -97,7 +97,7 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
       <View style={styles.cardFooter}>
         <View>
           <Text style={styles.amountLabel}>Total Amount</Text>
-          <Text style={styles.amountValue}>${request.totalPrice}</Text>
+          <Text style={styles.amountValue}>₹{request.totalPrice}</Text>
         </View>
         <View style={styles.actionButtons}>
           <TouchableOpacity

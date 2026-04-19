@@ -63,7 +63,7 @@ const INITIAL_NOTIFICATIONS = [
     id: 'n3',
     type: 'payment_received',
     title: 'Payment Received',
-    body: '$120.00 has been released to your Rentr wallet for the Trek Mountain Bike rental.',
+    body: '₹120.00 has been released to your Rentr wallet for the Trek Mountain Bike rental.',
     timestamp: '2 hours ago',
     isRead: false,
   },

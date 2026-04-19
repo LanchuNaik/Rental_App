@@ -87,7 +87,7 @@ export default function SearchFiltersScreen({ navigation }) {
         <View style={styles.priceRow}>
           <View style={styles.priceBox}>
             <Text style={styles.priceLabel}>Min</Text>
-            <Text style={styles.priceValue}>${minPrice}</Text>
+            <Text style={styles.priceValue}>₹{minPrice}</Text>
             <View style={styles.priceStepper}>
               <TouchableOpacity onPress={() => setMinPrice(Math.max(0, minPrice - 5))} style={styles.stepBtn}>
                 <Ionicons name="remove" size={16} color={colors.primary} />
@@ -100,7 +100,7 @@ export default function SearchFiltersScreen({ navigation }) {
           <View style={styles.priceDash} />
           <View style={styles.priceBox}>
             <Text style={styles.priceLabel}>Max</Text>
-            <Text style={styles.priceValue}>${maxPrice}</Text>
+            <Text style={styles.priceValue}>₹{maxPrice}</Text>
             <View style={styles.priceStepper}>
               <TouchableOpacity onPress={() => setMaxPrice(Math.max(minPrice + 5, maxPrice - 5))} style={styles.stepBtn}>
                 <Ionicons name="remove" size={16} color={colors.primary} />

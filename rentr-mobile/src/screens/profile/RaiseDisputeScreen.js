@@ -27,7 +27,7 @@ const MOCK_BOOKING = {
   ref: '#RNT-2026-00142',
   item: 'Sony A7 III Camera',
   dates: 'Apr 15 – Apr 18, 2026',
-  amount: '$120.00',
+  amount: '₹120.00',
   otherParty: 'Alex Rivera',
 };
 

@@ -110,15 +110,15 @@ export default function BookingRequestScreen({ navigation, route }) {
         {/* Price breakdown */}
         <Text style={styles.sectionTitle}>Price Breakdown</Text>
         <View style={styles.breakdownCard}>
-          <Row label={`$${item.price} × ${nights} nights`}  value={`$${rentTotal}`} />
+          <Row label={`₹${item.price} × ${nights} nights`}  value={`₹${rentTotal}`} />
           {item.deposit > 0 && (
-            <Row label="Refundable deposit" value={`$${item.deposit}`} />
+            <Row label="Refundable deposit" value={`₹${item.deposit}`} />
           )}
           {item.serviceFee > 0 && (
-            <Row label="Service fee" value={`$${item.serviceFee}`} />
+            <Row label="Service fee" value={`₹${item.serviceFee}`} />
           )}
           <View style={styles.breakdownDivider} />
-          <Row label="Total" value={`$${total}`} bold />
+          <Row label="Total" value={`₹${total}`} bold />
         </View>
 
         {/* Message to owner */}
@@ -147,7 +147,7 @@ export default function BookingRequestScreen({ navigation, route }) {
       <View style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total due now</Text>
-          <Text style={styles.totalAmount}>${total}</Text>
+          <Text style={styles.totalAmount}>₹{total}</Text>
         </View>
         <TouchableOpacity
           style={styles.requestButton}

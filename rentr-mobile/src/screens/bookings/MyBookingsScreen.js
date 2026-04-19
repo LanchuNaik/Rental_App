@@ -104,7 +104,7 @@ function BookingCard({ booking, onPress }) {
           </View>
           <View style={styles.cardFooter}>
             <StatusBadge status={booking.status} />
-            <Text style={styles.priceText}>${booking.totalPrice}</Text>
+            <Text style={styles.priceText}>₹{booking.totalPrice}</Text>
           </View>
         </View>
       </View>
@@ -152,7 +152,7 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
       <View style={styles.reqFooter}>
         <View>
           <Text style={styles.reqAmountLabel}>Total</Text>
-          <Text style={styles.reqAmountValue}>${request.totalPrice}</Text>
+          <Text style={styles.reqAmountValue}>₹{request.totalPrice}</Text>
         </View>
         <View style={styles.reqActions}>
           <TouchableOpacity

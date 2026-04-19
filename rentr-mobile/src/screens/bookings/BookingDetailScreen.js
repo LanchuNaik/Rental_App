@@ -290,25 +290,25 @@ export default function BookingDetailScreen({ navigation, route }) {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Price Breakdown</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>${pricePerDay}/day × {days} days</Text>
-            <Text style={styles.priceValue}>${pricePerDay * days}</Text>
+            <Text style={styles.priceLabel}>₹{pricePerDay}/day × {days} days</Text>
+            <Text style={styles.priceValue}>₹{pricePerDay * days}</Text>
           </View>
           {serviceFee > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Service fee</Text>
-              <Text style={styles.priceValue}>${serviceFee}</Text>
+              <Text style={styles.priceValue}>₹{serviceFee}</Text>
             </View>
           )}
           {deposit > 0 && (
             <View style={styles.priceRow}>
               <Text style={styles.priceLabel}>Security deposit</Text>
-              <Text style={styles.priceValue}>${deposit}</Text>
+              <Text style={styles.priceValue}>₹{deposit}</Text>
             </View>
           )}
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
             <Text style={styles.priceTotalLabel}>Total</Text>
-            <Text style={styles.priceTotalValue}>${total}</Text>
+            <Text style={styles.priceTotalValue}>₹{total}</Text>
           </View>
         </View>
 

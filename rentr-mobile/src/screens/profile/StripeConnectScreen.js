@@ -78,7 +78,7 @@ function ConnectedState({ onDisconnect }) {
           <Ionicons name="wallet-outline" size={18} color={colors.textSecondary} />
           <View style={styles.payoutInfoText}>
             <Text style={styles.payoutInfoLabel}>Pending Balance</Text>
-            <Text style={[styles.payoutInfoValue, { color: colors.success, fontWeight: '700' }]}>$310.00</Text>
+            <Text style={[styles.payoutInfoValue, { color: colors.success, fontWeight: '700' }]}>₹310.00</Text>
           </View>
         </View>
       </View>
