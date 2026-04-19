@@ -11,7 +11,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
@@ -21,9 +24,14 @@ function SavedCard({ item, onUnsave, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
       {/* Photo */}
-      <View style={[styles.cardPhoto, { backgroundColor: item.placeholderColor }]}>
-        <Ionicons name="image-outline" size={32} color={colors.textMuted} />
-        {/* Heart button */}
+      <View style={styles.cardPhoto}>
+        {item.image ? (
+          <Image source={{ uri: `${BASE_URL}/${item.image}` }} style={styles.cardPhotoImg} resizeMode="cover" />
+        ) : (
+          <View style={styles.cardPhotoPlaceholder}>
+            <Ionicons name="image-outline" size={32} color={colors.textMuted} />
+          </View>
+        )}
         <TouchableOpacity style={styles.heartBtn} onPress={onUnsave}>
           <Ionicons name="heart" size={20} color={colors.error} />
         </TouchableOpacity>
@@ -64,9 +72,9 @@ export default function SavedItemsScreen({ navigation }) {
         const items = res.data.map((item) => ({
           id: item._id,
           title: item.title,
-          pricePerDay: item.pricePerDay,
+          pricePerDay: item.price,
+          image: item.images?.[0] || null,
           distance: item.location?.address || '',
-          placeholderColor: '#BFDBFE',
           rating: item.avgRating || null,
         }));
         setSavedItems(items);
@@ -137,7 +145,10 @@ export default function SavedItemsScreen({ navigation }) {
                     <SavedCard
                       item={item}
                       onUnsave={() => handleUnsave(item.id)}
-                      onPress={() => navigation.navigate('ItemDetail', { itemId: item.id })}
+                      onPress={() => navigation.navigate('Browse', {
+                        screen: 'ItemDetail',
+                        params: { itemId: item.id },
+                      })}
                     />
                   </View>
                   {savedItems[idx + 1] ? (
@@ -217,9 +228,19 @@ const styles = StyleSheet.create({
   },
   cardPhoto: {
     height: 120,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  cardPhotoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  cardPhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   heartBtn: {
     position: 'absolute',

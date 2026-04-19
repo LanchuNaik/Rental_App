@@ -89,7 +89,7 @@ const getItems = async (req, res) => {
       .sort(setOption)
       .skip(skip)
       .limit(limit)
-      .populate("owner", "email");
+      .populate("owner", "name email avatar");
 
     res.json({
       success: true,
@@ -110,7 +110,7 @@ const getItems = async (req, res) => {
 
 const getItemById = async (req, res) => {
   try {
-    const item = await Item.findById(req.params.id).populate("owner", "email");
+    const item = await Item.findById(req.params.id).populate("owner", "name email avatar");
 
     if (!item) {
       return res.status(404).json({

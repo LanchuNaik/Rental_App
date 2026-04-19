@@ -5,15 +5,19 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, ActivityIndicator, Alert,
+  StatusBar, Dimensions, ActivityIndicator, Alert, Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemByIdApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function ItemDetailScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const itemId = route?.params?.itemId;
   const [item,        setItem]        = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -69,22 +73,31 @@ export default function ItemDetailScreen({ navigation, route }) {
 
       {/* Photo carousel */}
       <View style={styles.photoCarousel}>
-        <View style={styles.photoPlaceholder}>
-          <Ionicons name="camera" size={60} color={colors.textMuted} />
-          <Text style={styles.photoCount}>Photo {activePhoto + 1} of {photos.length}</Text>
-        </View>
+        {photos[0] && typeof photos[0] === 'string' ? (
+          <Image
+            source={{ uri: `${BASE_URL}/${photos[activePhoto]}` }}
+            style={styles.photoImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.photoPlaceholder}>
+            <Ionicons name="camera" size={60} color={colors.textMuted} />
+          </View>
+        )}
 
         {/* Pagination dots */}
-        <View style={styles.photoDots}>
-          {photos.map((_, i) => (
-            <TouchableOpacity key={i} onPress={() => setActivePhoto(i)}>
-              <View style={[styles.photoDot, activePhoto === i && styles.photoDotActive]} />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {photos.length > 1 && (
+          <View style={styles.photoDots}>
+            {photos.map((_, i) => (
+              <TouchableOpacity key={i} onPress={() => setActivePhoto(i)}>
+                <View style={[styles.photoDot, activePhoto === i && styles.photoDotActive]} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Top overlay buttons */}
-        <View style={styles.photoOverlay}>
+        <View style={[styles.photoOverlay, { top: insets.top + spacing.sm }]}>
           <TouchableOpacity style={styles.overlayBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -139,10 +152,12 @@ export default function ItemDetailScreen({ navigation, route }) {
           </View>
           <View style={styles.ownerInfo}>
             <Text style={styles.ownerName}>{item.owner?.name || 'Owner'}</Text>
-            <View style={styles.ownerMeta}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={styles.ownerMetaText}>{item.owner?.rating ?? '—'}</Text>
-            </View>
+            {item.owner?.rating ? (
+              <View style={styles.ownerMeta}>
+                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Text style={styles.ownerMetaText}>{item.owner.rating}</Text>
+              </View>
+            ) : null}
           </View>
           <TouchableOpacity style={styles.messageBtn}>
             <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
@@ -167,7 +182,7 @@ export default function ItemDetailScreen({ navigation, route }) {
       </ScrollView>
 
       {/* Sticky Book Now footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.xl }]}>
         <View style={styles.footerPrice}>
           <Text style={styles.footerPriceAmount}>₹{item.price}</Text>
           <Text style={styles.footerPriceLabel}>/day</Text>
@@ -186,8 +201,9 @@ export default function ItemDetailScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container:       { flex: 1, backgroundColor: colors.background },
-  photoCarousel:   { height: 300, backgroundColor: colors.surface, position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  photoPlaceholder:{ alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  photoCarousel:   { height: 320, backgroundColor: colors.surface, position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  photoImage:      { width: '100%', height: '100%' },
+  photoPlaceholder:{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   photoCount:      { ...typography.caption, color: colors.textMuted },
   photoDots:       { position: 'absolute', bottom: spacing.lg, flexDirection: 'row', gap: spacing.sm },
   photoDot:        { width: 6, height: 6, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.5)' },

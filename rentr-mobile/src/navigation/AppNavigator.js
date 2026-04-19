@@ -59,6 +59,7 @@
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
+import { StackActions }               from '@react-navigation/native';
 import { Ionicons }                   from '@expo/vector-icons';
 import { colors }                     from '../theme/theme';
 
@@ -233,8 +234,20 @@ function MainTabs({ onLogout }) {
       })}
     >
       <Tab.Screen name="Home"     component={HomeStack} />
-      <Tab.Screen name="Browse"   component={BrowseStack} />
-      <Tab.Screen name="Bookings" component={BookingsStack} />
+      <Tab.Screen
+        name="Browse"
+        component={BrowseStack}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.dispatch(StackActions.popToTop()),
+        })}
+      />
+      <Tab.Screen
+        name="Bookings"
+        component={BookingsStack}
+        listeners={({ navigation }) => ({
+          tabPress: () => navigation.dispatch(StackActions.popToTop()),
+        })}
+      />
       <Tab.Screen name="Profile">
         {(props) => <ProfileStack {...props} onLogout={onLogout} />}
       </Tab.Screen>

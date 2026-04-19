@@ -5,8 +5,10 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert,
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image,
 } from 'react-native';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
@@ -60,7 +62,15 @@ export default function BrowseFeedScreen({ navigation }) {
     >
       {/* Photo */}
       <View style={styles.photo}>
-        <Ionicons name="image-outline" size={40} color={colors.textMuted} />
+        {item.images?.[0] ? (
+          <Image
+            source={{ uri: `${BASE_URL}/${item.images[0]}` }}
+            style={styles.photoImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Ionicons name="image-outline" size={40} color={colors.textMuted} />
+        )}
         {item.category ? (
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{item.category}</Text>
@@ -79,10 +89,12 @@ export default function BrowseFeedScreen({ navigation }) {
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
         <View style={styles.metaRow}>
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={13} color="#F59E0B" />
-            <Text style={styles.ratingText}>{item.avgRating ?? '—'}</Text>
-          </View>
+          {item.avgRating ? (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={13} color="#F59E0B" />
+              <Text style={styles.ratingText}>{item.avgRating}</Text>
+            </View>
+          ) : <View />}
           {item.location?.address ? (
             <View style={styles.distanceRow}>
               <Ionicons name="location-outline" size={13} color={colors.textMuted} />
@@ -134,7 +146,7 @@ export default function BrowseFeedScreen({ navigation }) {
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={colors.primary} />
       ) : <FlatList
         data={filtered}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -159,7 +171,8 @@ const styles = StyleSheet.create({
   searchInput:   { flex: 1, ...typography.body, color: colors.textPrimary },
   list:          { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl, gap: spacing.lg },
   card:          { backgroundColor: colors.background, borderRadius: radius.xl, overflow: 'hidden', ...shadows.small, borderWidth: 1, borderColor: colors.border },
-  photo:         { height: 200, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  photo:         { height: 200, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+  photoImage:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   categoryBadge: { position: 'absolute', top: spacing.md, left: spacing.md, backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 3, paddingHorizontal: spacing.sm, borderRadius: radius.full },
   categoryText:  { ...typography.caption, color: colors.textInverse, fontWeight: '600' },
   heartButton:   { position: 'absolute', top: spacing.md, right: spacing.md, width: 36, height: 36, borderRadius: radius.full, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
