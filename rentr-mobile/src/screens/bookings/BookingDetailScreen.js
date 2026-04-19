@@ -3,6 +3,7 @@
 // ============================================
 
 import React, { useState, useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -111,6 +112,7 @@ function TimelineStep({ step, currentStatus, isLast }) {
 }
 
 export default function BookingDetailScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { bookingId } = route.params;
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -388,7 +390,7 @@ export default function BookingDetailScreen({ navigation, route }) {
 
       {/* FAB Chat Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { bottom: spacing.xl + insets.bottom }]}
         onPress={() => navigation.navigate('Chat', { bookingId: booking._id })}
         activeOpacity={0.85}
       >

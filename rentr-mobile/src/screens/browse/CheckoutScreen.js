@@ -7,6 +7,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, ActivityIndicator, StatusBar, Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
@@ -19,6 +20,7 @@ const SAVED_CARDS = [
 ];
 
 export default function CheckoutScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const { total = 0, startDate, endDate, itemId, message } = route?.params || {};
   const [selectedCard, setSelectedCard] = useState('1');
   const [loading,      setLoading]      = useState(false);
@@ -95,7 +97,7 @@ export default function CheckoutScreen({ navigation, route }) {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom || spacing.xl }]}>
         <TouchableOpacity
           style={[styles.payButton, loading && styles.buttonDisabled]}
           onPress={handlePay}

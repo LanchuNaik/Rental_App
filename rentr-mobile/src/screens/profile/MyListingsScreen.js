@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getMyItemsApi, deleteItemApi } from '../../services/item.service';
@@ -101,6 +102,7 @@ function ListingCard({ listing, onToggle, onPress, onDelete }) {
 }
 
 export default function MyListingsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [listings, setListings] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
@@ -224,7 +226,7 @@ export default function MyListingsScreen({ navigation }) {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddListing')} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.fab, { bottom: spacing.xl + insets.bottom }]} onPress={() => navigation.navigate('AddListing')} activeOpacity={0.85}>
         <Ionicons name="add" size={28} color={colors.textInverse} />
       </TouchableOpacity>
     </Screen>
