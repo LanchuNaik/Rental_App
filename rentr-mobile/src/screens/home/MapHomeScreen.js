@@ -18,10 +18,11 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getNearbyItemsApi } from '../../services/item.service';
+import { CATEGORY_LABELS } from '../../constants/categories';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-const CATEGORIES = ['All', 'Tools', 'Cameras', 'Sports', 'Vehicles', 'Outdoor', 'Electronics'];
+const CATEGORIES = ['All', ...CATEGORY_LABELS];
 
 // Default region (San Francisco) until location is granted
 const DEFAULT_REGION = {
@@ -137,7 +138,7 @@ export default function MapHomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity style={styles.filterButton} onPress={() => navigation.navigate('SearchFilters')}>
+        <TouchableOpacity style={styles.filterButton} onPress={() => navigation.navigate('Browse', { screen: 'SearchFilters' })}>
           <Ionicons name="options" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>

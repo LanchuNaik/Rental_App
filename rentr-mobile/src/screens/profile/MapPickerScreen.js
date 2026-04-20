@@ -121,12 +121,13 @@ export default function MapPickerScreen({ navigation, route }) {
   const handleConfirm = () => {
     if (!marker) { Alert.alert('Pick a location', 'Tap on the map to drop a pin.'); return; }
     const returnTo = route?.params?.returnTo || 'AddListing';
+    const { savedPhotos, savedForm, savedFrom, savedTo } = route?.params || {};
     navigation.navigate(returnTo, {
-      pickedLocation: {
-        latitude:  marker.latitude,
-        longitude: marker.longitude,
-        address,
-      },
+      pickedLocation: { latitude: marker.latitude, longitude: marker.longitude, address },
+      savedPhotos,
+      savedForm,
+      savedFrom,
+      savedTo,
     });
   };
 

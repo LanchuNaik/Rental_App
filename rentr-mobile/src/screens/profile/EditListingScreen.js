@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { updateItemApi } from '../../services/item.service';
+import { CATEGORIES } from '../../constants/categories';
 
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Select date';
@@ -112,13 +113,22 @@ export default function EditListingScreen({ navigation, route }) {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Category</Text>
-          <TextInput
-            style={styles.input}
-            value={form.category}
-            onChangeText={(v) => setForm((f) => ({ ...f, category: v }))}
-            placeholder="e.g. Electronics, Tools, Sports"
-            placeholderTextColor={colors.textMuted}
-          />
+          <View style={styles.categoryGrid}>
+            {CATEGORIES.map((cat) => {
+              const active = form.category === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryChip, active && { backgroundColor: cat.color, borderColor: cat.color }]}
+                  onPress={() => setForm((f) => ({ ...f, category: active ? '' : cat.id }))}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={cat.icon} size={14} color={active ? '#fff' : cat.color} />
+                  <Text style={[styles.categoryChipText, active && { color: '#fff' }]}>{cat.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.fieldGroup}>
@@ -273,6 +283,9 @@ const styles = StyleSheet.create({
   scrollContent:    { padding: spacing.lg, gap: spacing.md },
   sectionTitle:     { ...typography.h3, color: colors.textPrimary, marginTop: spacing.sm },
   fieldGroup:       { gap: spacing.sm },
+  categoryGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  categoryChip:     { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: spacing.md, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  categoryChipText: { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
   fieldLabel:       { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary },
   input: {
     borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,

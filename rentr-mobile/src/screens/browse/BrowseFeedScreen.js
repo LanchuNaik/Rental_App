@@ -2,7 +2,7 @@
 // Browse Feed Screen
 // ============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image,
@@ -14,25 +14,54 @@ import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemsApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
 
-export default function BrowseFeedScreen({ navigation }) {
-  const [searchText, setSearchText] = useState('');
-  const [items,      setItems]      = useState([]);
-  const [savedItems, setSavedItems] = useState([]);
-  const [loading,    setLoading]    = useState(true);
+export default function BrowseFeedScreen({ navigation, route }) {
+  const [searchText,    setSearchText]    = useState('');
+  const [items,         setItems]         = useState([]);
+  const [savedItems,    setSavedItems]    = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [activeFilters, setActiveFilters] = useState({});
 
+  const fetchItems = async (filters = {}, search = '') => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (search)              params.search   = search;
+      if (filters.category && filters.category !== 'All') params.category = filters.category;
+      if (filters.minPrice > 0)    params.minPrice = filters.minPrice;
+      if (filters.maxPrice != null) params.maxPrice = filters.maxPrice;
+      if (filters.sort)            params.sort     = filters.sort;
+      params.limit = 50;
+
+      const res = await getItemsApi(params);
+      setItems(res.data);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to load items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => { fetchItems(); }, []);
+
+  // Debounce search — wait 400ms after user stops typing before hitting the API
+  const searchTimer = useRef(null);
+  const handleSearchChange = (text) => {
+    setSearchText(text);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchItems(activeFilters, text);
+    }, 400);
+  };
+
+  // Re-fetch when filters arrive from SearchFiltersScreen
   useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const res = await getItemsApi();
-        setItems(res.data);
-      } catch (err) {
-        Alert.alert('Error', err.message || 'Failed to load items');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItems();
-  }, []);
+    const incomingFilters = route?.params?.filters;
+    if (incomingFilters) {
+      setActiveFilters(incomingFilters);
+      fetchItems(incomingFilters, searchText);
+    }
+  }, [route?.params?.filters]);
 
   const toggleSave = async (id) => {
     const alreadySaved = savedItems.includes(id);
@@ -50,9 +79,6 @@ export default function BrowseFeedScreen({ navigation }) {
     }
   };
 
-  const filtered = items.filter((item) =>
-    item.title.toLowerCase().includes(searchText.toLowerCase())
-  );
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -117,8 +143,11 @@ export default function BrowseFeedScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Browse Items</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SearchFilters', {})} style={styles.filterBtn}>
-          <Ionicons name="options-outline" size={22} color={colors.textPrimary} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('SearchFilters', { activeFilters })}
+          style={[styles.filterBtn, Object.keys(activeFilters).length > 0 && styles.filterBtnActive]}
+        >
+          <Ionicons name="options-outline" size={22} color={Object.keys(activeFilters).length > 0 ? colors.textInverse : colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -131,10 +160,10 @@ export default function BrowseFeedScreen({ navigation }) {
             placeholder="Search items..."
             placeholderTextColor={colors.textMuted}
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={handleSearchChange}
           />
           {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
+            <TouchableOpacity onPress={() => handleSearchChange('')}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
@@ -145,7 +174,7 @@ export default function BrowseFeedScreen({ navigation }) {
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} size="large" color={colors.primary} />
       ) : <FlatList
-        data={filtered}
+        data={items}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
@@ -165,7 +194,8 @@ export default function BrowseFeedScreen({ navigation }) {
 const styles = StyleSheet.create({
   header:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   headerTitle:   { ...typography.h2, color: colors.textPrimary },
-  filterBtn:     { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  filterBtn:       { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  filterBtnActive: { backgroundColor: colors.primary },
   searchWrapper: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
   searchBar:     { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg, height: 48, borderWidth: 1, borderColor: colors.border },
   searchInput:   { flex: 1, ...typography.body, color: colors.textPrimary },

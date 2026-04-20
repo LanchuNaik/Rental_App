@@ -2,37 +2,57 @@
 // Search / Filters Screen
 // ============================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, StatusBar,
+  ScrollView, StatusBar, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
+import { CATEGORY_LABELS } from '../../constants/categories';
 
-const CATEGORIES = ['All', 'Tools', 'Cameras', 'Sports', 'Vehicles', 'Outdoor', 'Electronics'];
-const SORT_OPTIONS = ['Nearest first', 'Price: low to high', 'Price: high to low', 'Top rated'];
-const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
+const CATEGORIES = ['All', ...CATEGORY_LABELS];
+const SORT_OPTIONS = ['Default', 'Price: low to high', 'Price: high to low'];
 
-export default function SearchFiltersScreen({ navigation }) {
+const SORT_MAP = {
+  'Default':             null,
+  'Price: low to high':  'price',
+  'Price: high to low':  '-price',
+};
+
+export default function SearchFiltersScreen({ navigation, route }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedSort,     setSelectedSort]     = useState('Nearest first');
-  const [selectedRadius,   setSelectedRadius]   = useState(10);
-  const [minPrice,         setMinPrice]         = useState(0);
-  const [maxPrice,         setMaxPrice]         = useState(200);
+  const [selectedSort,     setSelectedSort]     = useState('Default');
+  const [minPrice,         setMinPrice]         = useState('');
+  const [maxPrice,         setMaxPrice]         = useState('');
+
+  // Sync state whenever activeFilters param changes (covers returning to screen)
+  useEffect(() => {
+    const f = route?.params?.activeFilters || {};
+    setSelectedCategory(f.category  || 'All');
+    setSelectedSort(f.sortLabel     || 'Default');
+    setMinPrice(f.minPrice > 0      ? String(f.minPrice) : '');
+    setMaxPrice(f.maxPrice          ? String(f.maxPrice) : '');
+  }, [route?.params?.activeFilters]);
 
   const handleApply = () => {
-    // TODO: pass filters back via navigation params or global state
-    navigation.goBack();
+    navigation.navigate('BrowseFeed', {
+      filters: {
+        category:  selectedCategory,
+        minPrice:  minPrice  ? Number(minPrice)  : 0,
+        maxPrice:  maxPrice  ? Number(maxPrice)  : null,
+        sort:      SORT_MAP[selectedSort],
+        sortLabel: selectedSort,
+      },
+    });
   };
 
   const handleReset = () => {
     setSelectedCategory('All');
-    setSelectedSort('Nearest first');
-    setSelectedRadius(10);
-    setMinPrice(0);
-    setMaxPrice(200);
+    setSelectedSort('Default');
+    setMinPrice('');
+    setMaxPrice('');
   };
 
   const SectionTitle = ({ title }) => <Text style={styles.sectionTitle}>{title}</Text>;
@@ -68,47 +88,31 @@ export default function SearchFiltersScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Radius */}
-        <SectionTitle title="Distance radius" />
-        <View style={styles.chipRow}>
-          {RADIUS_OPTIONS.map((r) => (
-            <TouchableOpacity
-              key={r}
-              style={[styles.chip, selectedRadius === r && styles.chipActive]}
-              onPress={() => setSelectedRadius(r)}
-            >
-              <Text style={[styles.chipText, selectedRadius === r && styles.chipTextActive]}>{r} km</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Price range — simple low/high picker */}
+        {/* Price range */}
         <SectionTitle title="Price range (per day)" />
         <View style={styles.priceRow}>
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Min</Text>
-            <Text style={styles.priceValue}>₹{minPrice}</Text>
-            <View style={styles.priceStepper}>
-              <TouchableOpacity onPress={() => setMinPrice(Math.max(0, minPrice - 5))} style={styles.stepBtn}>
-                <Ionicons name="remove" size={16} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setMinPrice(Math.min(maxPrice - 5, minPrice + 5))} style={styles.stepBtn}>
-                <Ionicons name="add" size={16} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.priceInputBox}>
+            <Text style={styles.priceLabel}>Min (₹)</Text>
+            <TextInput
+              style={styles.priceInput}
+              value={minPrice}
+              onChangeText={setMinPrice}
+              placeholder="0"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+            />
           </View>
           <View style={styles.priceDash} />
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Max</Text>
-            <Text style={styles.priceValue}>₹{maxPrice}</Text>
-            <View style={styles.priceStepper}>
-              <TouchableOpacity onPress={() => setMaxPrice(Math.max(minPrice + 5, maxPrice - 5))} style={styles.stepBtn}>
-                <Ionicons name="remove" size={16} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setMaxPrice(Math.min(500, maxPrice + 5))} style={styles.stepBtn}>
-                <Ionicons name="add" size={16} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.priceInputBox}>
+            <Text style={styles.priceLabel}>Max (₹)</Text>
+            <TextInput
+              style={styles.priceInput}
+              value={maxPrice}
+              onChangeText={setMaxPrice}
+              placeholder="Any"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="numeric"
+            />
           </View>
         </View>
 
@@ -148,13 +152,15 @@ const styles = StyleSheet.create({
   chipActive:      { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText:        { ...typography.bodySmall, fontWeight: '600', color: colors.textSecondary },
   chipTextActive:  { color: colors.textInverse },
-  priceRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  priceBox:        { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },
-  priceLabel:      { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs },
-  priceValue:      { ...typography.h3, color: colors.textPrimary, marginBottom: spacing.sm },
-  priceStepper:    { flexDirection: 'row', gap: spacing.sm },
-  stepBtn:         { width: 32, height: 32, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  priceDash:       { width: 16, height: 2, backgroundColor: colors.border },
+  priceRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  priceInputBox:   { flex: 1, gap: spacing.sm },
+  priceLabel:      { ...typography.caption, fontWeight: '600', color: colors.textSecondary },
+  priceInput: {
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.md,
+    ...typography.body, color: colors.textPrimary, backgroundColor: colors.surface,
+  },
+  priceDash:       { width: 12, height: 2, backgroundColor: colors.border, marginTop: spacing.xl },
   sortRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   sortText:        { ...typography.body, color: colors.textSecondary },
   sortTextActive:  { color: colors.primary, fontWeight: '600' },

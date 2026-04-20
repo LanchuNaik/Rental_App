@@ -54,22 +54,26 @@ const createItem = async (req, res) => {
 
 const getItems = async (req, res) => {
   try {
-    const { minPrice, maxPrice, search, sort } = req.query;
+    const { minPrice, maxPrice, search, sort, category } = req.query;
 
     let filter = {};
 
     if (minPrice || maxPrice) {
       filter.price = {};
-
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
     if (search) {
-      filter.title = {
-        $regex: search,
-        $options: "i",
-      }
+      filter.$or = [
+        { title:       { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { category:    { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    if (category && category !== 'All') {
+      filter.category = { $regex: `^${category}$`, $options: 'i' };
     }
 
     let setOption = {};

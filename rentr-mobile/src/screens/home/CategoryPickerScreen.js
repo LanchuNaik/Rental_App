@@ -9,21 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-
-const CATEGORIES = [
-  { id: 'tools',       label: 'Tools',        icon: 'hammer',          color: '#F97316' },
-  { id: 'cameras',     label: 'Cameras',      icon: 'camera',          color: '#8B5CF6' },
-  { id: 'sports',      label: 'Sports',       icon: 'football',        color: '#10B981' },
-  { id: 'vehicles',    label: 'Vehicles',     icon: 'car',             color: '#3B82F6' },
-  { id: 'outdoor',     label: 'Outdoor',      icon: 'leaf',            color: '#059669' },
-  { id: 'electronics', label: 'Electronics',  icon: 'laptop',          color: '#6366F1' },
-  { id: 'music',       label: 'Music',        icon: 'musical-notes',   color: '#EC4899' },
-  { id: 'events',      label: 'Events',       icon: 'balloon',         color: '#F59E0B' },
-  { id: 'garden',      label: 'Garden',       icon: 'flower',          color: '#84CC16' },
-  { id: 'travel',      label: 'Travel',       icon: 'airplane',        color: '#06B6D4' },
-  { id: 'kids',        label: "Kids' Stuff",  icon: 'happy',           color: '#F97316' },
-  { id: 'other',       label: 'Other',        icon: 'apps',            color: '#6B7280' },
-];
+import { CATEGORIES } from '../../constants/categories';
 
 export default function CategoryPickerScreen({ navigation }) {
   return (

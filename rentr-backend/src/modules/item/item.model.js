@@ -9,7 +9,12 @@ const itemSchema = new mongoose.Schema({
   price: Number,
   category: {
     type: String,
-    default: null,   // e.g. "Camping", "Electronics", "Vehicles"
+    enum: [
+      'Electronics', 'Cameras', 'Tools', 'Vehicles', 'Sports', 'Outdoor',
+      'Clothing', 'Furniture', 'Music', 'Events', 'Garden', 'Travel',
+      'Party', 'Appliances', 'Fitness', 'Medical', null,
+    ],
+    default: null,
   },
   images: {
     type: [String],  // array of file paths e.g. ["uploads/items/abc.jpg", "uploads/items/xyz.jpg"]

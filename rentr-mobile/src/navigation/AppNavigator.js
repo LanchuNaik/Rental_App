@@ -142,7 +142,6 @@ function HomeStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MapHome"        component={MapHomeScreen} />
       <Stack.Screen name="CategoryPicker" component={CategoryPickerScreen} />
-      <Stack.Screen name="SearchFilters"  component={SearchFiltersScreen} />
     </Stack.Navigator>
   );
 }
@@ -152,6 +151,7 @@ function BrowseStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="BrowseFeed"           component={BrowseFeedScreen} />
+      <Stack.Screen name="SearchFilters"        component={SearchFiltersScreen} />
       <Stack.Screen name="ItemDetail"           component={ItemDetailScreen} />
       <Stack.Screen name="AvailabilityCalendar" component={AvailabilityCalendarScreen} />
       <Stack.Screen name="BookingRequest"       component={BookingRequestScreen} />

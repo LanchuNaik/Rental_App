@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +21,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { createItemApi } from '../../services/item.service';
+import { CATEGORIES } from '../../constants/categories';
 
 const formatDate = (date) =>
   date ? date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Select date';
@@ -39,20 +41,25 @@ export default function AddListingScreen({ navigation, route }) {
     price:       '',
   });
 
-  // Receive picked location from MapPickerScreen
+  // Restore state that was saved before navigating to MapPickerScreen
   useEffect(() => {
-    if (route?.params?.pickedLocation) {
-      setLocation(route.params.pickedLocation);
-    }
+    const p = route?.params;
+    if (!p) return;
+    if (p.pickedLocation) setLocation(p.pickedLocation);
+    if (p.savedPhotos)    setPhotos(p.savedPhotos);
+    if (p.savedForm)      setForm(p.savedForm);
+    if (p.savedFrom)      setAvailableFrom(p.savedFrom ? new Date(p.savedFrom) : null);
+    if (p.savedTo)        setAvailableTo(p.savedTo   ? new Date(p.savedTo)   : null);
   }, [route?.params?.pickedLocation]);
 
   const pickPhoto = async (idx) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
+      aspect: [4, 3],
       quality: 0.8,
     });
-    if (!result.canceled) {
+    if (!result.canceled && result.assets?.length > 0) {
       const updated = [...photos];
       updated[idx] = result.assets[0].uri;
       setPhotos(updated);
@@ -119,7 +126,7 @@ export default function AddListingScreen({ navigation, route }) {
             >
               {photo ? (
                 <>
-                  <Ionicons name="image" size={28} color={colors.primary} />
+                  <Image source={{ uri: photo }} style={styles.photoThumb} />
                   {idx === 0 && (
                     <View style={styles.coverBadge}>
                       <Text style={styles.coverBadgeText}>Cover</Text>
@@ -152,13 +159,22 @@ export default function AddListingScreen({ navigation, route }) {
 
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Category</Text>
-          <TextInput
-            style={styles.input}
-            value={form.category}
-            onChangeText={(v) => setForm((f) => ({ ...f, category: v }))}
-            placeholder="e.g. Electronics, Tools, Sports"
-            placeholderTextColor={colors.textMuted}
-          />
+          <View style={styles.categoryGrid}>
+            {CATEGORIES.map((cat) => {
+              const active = form.category === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryChip, active && { backgroundColor: cat.color, borderColor: cat.color }]}
+                  onPress={() => setForm((f) => ({ ...f, category: active ? '' : cat.id }))}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={cat.icon} size={14} color={active ? '#fff' : cat.color} />
+                  <Text style={[styles.categoryChipText, active && { color: '#fff' }]}>{cat.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.fieldGroup}>
@@ -203,7 +219,11 @@ export default function AddListingScreen({ navigation, route }) {
         <TouchableOpacity
           style={styles.mapPickerBtn}
           onPress={() => navigation.navigate('MapPicker', {
-            initial: location ? location : undefined,
+            initial:     location ?? undefined,
+            savedPhotos: photos,
+            savedForm:   form,
+            savedFrom:   availableFrom?.toISOString() ?? null,
+            savedTo:     availableTo?.toISOString()   ?? null,
           })}
           activeOpacity={0.85}
         >
@@ -334,9 +354,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   photoBoxFilled:  { borderColor: colors.primary, borderStyle: 'solid', backgroundColor: colors.primaryLight },
+  photoThumb:      { width: '100%', height: '100%', borderRadius: radius.md - 2 },
   coverBadge:      { position: 'absolute', bottom: 4, backgroundColor: colors.primary, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
   coverBadgeText:  { ...typography.caption, fontWeight: '700', color: colors.textInverse, fontSize: 10 },
   addPhotoLabel:   { ...typography.caption, color: colors.textMuted, fontSize: 10 },
+  categoryGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  categoryChip:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: spacing.md, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  categoryChipText:{ ...typography.caption, fontWeight: '600', color: colors.textSecondary },
   // Form
   fieldGroup:  { gap: spacing.sm },
   fieldLabel:  { ...typography.bodySmall, fontWeight: '600', color: colors.textPrimary },
