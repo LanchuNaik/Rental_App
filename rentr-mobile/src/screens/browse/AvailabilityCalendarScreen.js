@@ -25,14 +25,17 @@ function buildCalendar(year, month) {
 }
 
 export default function AvailabilityCalendarScreen({ navigation, route }) {
-  const { itemId } = route?.params || {};
+  const { itemId, availableFrom, availableTo } = route?.params || {};
   const today = new Date();
-  const [year,        setYear]        = useState(today.getFullYear());
-  const [month,       setMonth]       = useState(today.getMonth());
-  const [startDate,   setStartDate]   = useState(null);
-  const [endDate,     setEndDate]     = useState(null);
+  const [year,         setYear]         = useState(today.getFullYear());
+  const [month,        setMonth]        = useState(today.getMonth());
+  const [startDate,    setStartDate]    = useState(null);
+  const [endDate,      setEndDate]      = useState(null);
   const [blockedDates, setBlockedDates] = useState([]);
   const [loadingDates, setLoadingDates] = useState(false);
+
+  const availFrom = availableFrom ? new Date(availableFrom) : null;
+  const availTo   = availableTo   ? new Date(availableTo)   : null;
 
   useEffect(() => {
     if (!itemId) return;
@@ -40,9 +43,7 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
       setLoadingDates(true);
       try {
         const res = await getAvailabilityApi(itemId);
-        // API returns array of booked date strings or {startDate, endDate} objects
-        const data = res.data?.bookedDates || res.data || [];
-        // Flatten ranges into individual date strings
+        const data = res.data || [];
         const allDates = [];
         data.forEach((entry) => {
           if (typeof entry === 'string') {
@@ -68,8 +69,14 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
   const cells = buildCalendar(year, month);
 
   const dateStr = (day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const isBlocked = (day) => blockedDates.includes(dateStr(day));
-  const isPast    = (day) => new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const isBlocked    = (day) => blockedDates.includes(dateStr(day));
+  const isPast       = (day) => new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const isOutOfRange = (day) => {
+    const d = new Date(year, month, day);
+    if (availFrom && d < new Date(availFrom.getFullYear(), availFrom.getMonth(), availFrom.getDate())) return true;
+    if (availTo   && d > new Date(availTo.getFullYear(),   availTo.getMonth(),   availTo.getDate()))   return true;
+    return false;
+  };
 
   const isStart   = (day) => startDate === dateStr(day);
   const isEnd     = (day) => endDate   === dateStr(day);
@@ -80,7 +87,7 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
   };
 
   const handleDayPress = (day) => {
-    if (isBlocked(day) || isPast(day)) return;
+    if (isBlocked(day) || isPast(day) || isOutOfRange(day)) return;
     const ds = dateStr(day);
     if (!startDate || (startDate && endDate)) {
       setStartDate(ds); setEndDate(null);
@@ -119,6 +126,16 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
           </View>
         )}
 
+        {(availFrom || availTo) && (
+          <View style={styles.availBanner}>
+            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+            <Text style={styles.availBannerText}>
+              Available{availFrom ? ` from ${availFrom.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
+              {availTo ? ` to ${availTo.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.monthNav}>
           <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
             <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
@@ -136,12 +153,13 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
         <View style={styles.grid}>
           {cells.map((day, i) => {
             if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-            const blocked  = isBlocked(day);
-            const past     = isPast(day);
-            const start    = isStart(day);
-            const end      = isEnd(day);
-            const inRange  = isInRange(day);
-            const disabled = blocked || past;
+            const blocked   = isBlocked(day);
+            const past      = isPast(day);
+            const outRange  = isOutOfRange(day);
+            const start     = isStart(day);
+            const end       = isEnd(day);
+            const inRange   = isInRange(day);
+            const disabled  = blocked || past || outRange;
             return (
               <TouchableOpacity
                 key={day}
@@ -212,6 +230,8 @@ const styles = StyleSheet.create({
   clearText:      { ...typography.body, color: colors.primary, fontWeight: '600' },
   loadingRow:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center', paddingVertical: spacing.sm },
   loadingText:    { ...typography.bodySmall, color: colors.textSecondary },
+  availBanner:    { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.xl, marginTop: spacing.md, padding: spacing.md, backgroundColor: colors.primaryLight, borderRadius: radius.md },
+  availBannerText:{ ...typography.bodySmall, color: colors.primary, fontWeight: '600', flex: 1 },
   monthNav:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
   navBtn:         { width: 40, height: 40, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   monthTitle:     { ...typography.h3, color: colors.textPrimary },

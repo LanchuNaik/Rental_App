@@ -33,6 +33,7 @@ const STEP_ORDER = ['requested', 'accepted', 'pickup', 'active', 'returned', 'co
 // Map booking status to timeline step
 const STATUS_TO_STEP = {
   pending:   'requested',
+  confirmed: 'accepted',
   accepted:  'accepted',
   active:    'active',
   completed: 'completed',
@@ -42,6 +43,7 @@ const STATUS_TO_STEP = {
 
 const STATUS_BADGE_CONFIG = {
   pending:   { label: 'Pending',   bg: '#FEF3C7', color: colors.warning },
+  confirmed: { label: 'Accepted',  bg: '#D1FAE5', color: colors.success },
   accepted:  { label: 'Accepted',  bg: '#D1FAE5', color: colors.success },
   active:    { label: 'Active',    bg: '#D1FAE5', color: colors.success },
   completed: { label: 'Completed', bg: colors.primaryLight, color: colors.primary },
@@ -198,12 +200,12 @@ export default function BookingDetailScreen({ navigation, route }) {
   const pricePerDay = booking.item?.price || 0;
   const serviceFee = booking.serviceFee || 0;
   const deposit = booking.depositAmount || 0;
-  const total = booking.totalPrice || 0;
-  const ownerName = booking.owner?.name || 'Owner';
-  const ownerRating = booking.owner?.rating || null;
+  const total = booking.totalAmount || 0;
+  const renterName  = booking.user?.name  || 'Renter';
+  const ownerName   = booking.item?.owner?.name || 'Owner';
   const bookingRef = `#RNT-${booking._id?.slice(-6).toUpperCase()}`;
 
-  const canCancel = ['pending', 'accepted'].includes(booking.status);
+  const canCancel = ['pending', 'confirmed'].includes(booking.status);
   const isOwner = false; // adjust based on auth context if needed
 
   return (
@@ -314,7 +316,7 @@ export default function BookingDetailScreen({ navigation, route }) {
           </View>
         </View>
 
-        {/* Owner Info */}
+        {/* Owner */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Owner</Text>
           <View style={styles.personRow}>
@@ -323,12 +325,19 @@ export default function BookingDetailScreen({ navigation, route }) {
             </View>
             <View style={styles.personInfo}>
               <Text style={styles.personName}>{ownerName}</Text>
-              {ownerRating && (
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={13} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{ownerRating} rating</Text>
-                </View>
-              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Renter */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Renter</Text>
+          <View style={styles.personRow}>
+            <View style={[styles.personAvatar, { backgroundColor: '#BBF7D0' }]}>
+              <Text style={styles.personInitials}>{getInitials(renterName)}</Text>
+            </View>
+            <View style={styles.personInfo}>
+              <Text style={styles.personName}>{renterName}</Text>
             </View>
             <TouchableOpacity
               style={styles.messageBtn}
@@ -341,7 +350,7 @@ export default function BookingDetailScreen({ navigation, route }) {
 
         {/* Actions */}
         <View style={styles.actionSection}>
-          {booking.status === 'accepted' && (
+          {(booking.status === 'confirmed' || booking.status === 'accepted') && (
             <TouchableOpacity
               style={styles.pickupBtn}
               onPress={() => navigation.navigate('PickupPhotos', { bookingId: booking._id })}

@@ -64,8 +64,9 @@ function timeAgo(dateStr) {
 }
 
 function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoading }) {
-  const renterName = request.renter?.name || 'Renter';
-  const days = daysBetween(request.startDate, request.endDate);
+  const renterName = request.user?.name || 'Unknown';
+  const days       = daysBetween(request.startDate, request.endDate);
+  const isPending  = request.status === 'pending';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
@@ -73,9 +74,7 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
         <RenterAvatar name={renterName} index={index} />
         <View style={styles.cardHeaderInfo}>
           <Text style={styles.renterName}>{renterName}</Text>
-          <Text style={styles.submittedText}>
-            Submitted {timeAgo(request.createdAt)}
-          </Text>
+          <Text style={styles.submittedText}>Submitted {timeAgo(request.createdAt)}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
@@ -87,9 +86,7 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
         </View>
         <View style={styles.itemRow}>
           <Ionicons name="calendar-outline" size={15} color={colors.textSecondary} />
-          <Text style={styles.itemMeta}>
-            {formatDateRange(request.startDate, request.endDate)}
-          </Text>
+          <Text style={styles.itemMeta}>{formatDateRange(request.startDate, request.endDate)}</Text>
           <Text style={styles.daysBadge}>{days} day{days !== 1 ? 's' : ''}</Text>
         </View>
       </View>
@@ -97,37 +94,40 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
       <View style={styles.cardFooter}>
         <View>
           <Text style={styles.amountLabel}>Total Amount</Text>
-          <Text style={styles.amountValue}>₹{request.totalPrice}</Text>
+          <Text style={styles.amountValue}>₹{request.totalAmount}</Text>
         </View>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.declineBtn}
-            onPress={onDecline}
-            activeOpacity={0.8}
-            disabled={actionLoading === 'accept' || actionLoading === 'reject'}
-          >
-            {actionLoading === 'reject' ? (
-              <ActivityIndicator size="small" color={colors.error} />
-            ) : (
-              <Text style={styles.declineBtnText}>Decline</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.acceptBtn}
-            onPress={onAccept}
-            activeOpacity={0.8}
-            disabled={actionLoading === 'accept' || actionLoading === 'reject'}
-          >
-            {actionLoading === 'accept' ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={15} color={colors.textInverse} />
-                <Text style={styles.acceptBtnText}>Accept</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+
+        {isPending ? (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.declineBtn}
+              onPress={onDecline}
+              activeOpacity={0.8}
+              disabled={actionLoading === 'accept' || actionLoading === 'reject'}
+            >
+              {actionLoading === 'reject'
+                ? <ActivityIndicator size="small" color={colors.error} />
+                : <Text style={styles.declineBtnText}>Decline</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.acceptBtn}
+              onPress={onAccept}
+              activeOpacity={0.8}
+              disabled={actionLoading === 'accept' || actionLoading === 'reject'}
+            >
+              {actionLoading === 'accept'
+                ? <ActivityIndicator size="small" color={colors.textInverse} />
+                : <><Ionicons name="checkmark" size={15} color={colors.textInverse} /><Text style={styles.acceptBtnText}>Accept</Text></>
+              }
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.acceptedBadge}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            <Text style={styles.acceptedBadgeText}>Accepted</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -166,7 +166,7 @@ export default function IncomingRequestsScreen({ navigation }) {
           setActionLoading((prev) => ({ ...prev, [id]: 'accept' }));
           try {
             await acceptBookingApi(id);
-            setRequests((prev) => prev.filter((r) => r._id !== id));
+            setRequests((prev) => prev.map((r) => r._id === id ? { ...r, status: 'confirmed' } : r));
             Alert.alert('Accepted', 'The renter has been notified.');
           } catch (err) {
             Alert.alert('Error', err.message || 'Could not accept booking');
@@ -210,9 +210,9 @@ export default function IncomingRequestsScreen({ navigation }) {
           <Text style={styles.headerTitle}>Incoming Requests</Text>
           <Text style={styles.headerSubtitle}>Review and respond to rental requests</Text>
         </View>
-        {requests.length > 0 && (
+        {requests.filter((r) => r.status === 'pending').length > 0 && (
           <View style={styles.pendingBadge}>
-            <Text style={styles.pendingBadgeText}>{requests.length} pending</Text>
+            <Text style={styles.pendingBadgeText}>{requests.filter((r) => r.status === 'pending').length} pending</Text>
           </View>
         )}
       </View>
@@ -446,6 +446,20 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     fontWeight: '600',
     color: colors.textInverse,
+  },
+  acceptedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+  },
+  acceptedBadgeText: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: colors.success,
   },
   emptyState: {
     alignItems: 'center',

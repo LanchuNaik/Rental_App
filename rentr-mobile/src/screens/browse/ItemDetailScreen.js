@@ -171,7 +171,7 @@ export default function ItemDetailScreen({ navigation, route }) {
         {/* Availability */}
         <TouchableOpacity
           style={styles.availabilityButton}
-          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id })}
+          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id, availableFrom: item.availableFrom, availableTo: item.availableTo })}
         >
           <Ionicons name="calendar-outline" size={20} color={colors.primary} />
           <Text style={styles.availabilityText}>Check availability</Text>
@@ -189,7 +189,7 @@ export default function ItemDetailScreen({ navigation, route }) {
         </View>
         <TouchableOpacity
           style={styles.bookButton}
-          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id })}
+          onPress={() => navigation.navigate('AvailabilityCalendar', { itemId: item._id, availableFrom: item.availableFrom, availableTo: item.availableTo })}
           activeOpacity={0.85}
         >
           <Text style={styles.bookButtonText}>Book Now</Text>

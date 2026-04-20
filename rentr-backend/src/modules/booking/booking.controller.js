@@ -39,11 +39,20 @@ const createBooking = async (req, res) => {
       });
     }
 
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+
+    const days = Math.round((new Date(endDate) - new Date(startDate)) / 86400000);
+    const totalAmount = item.price * days;
+
     const booking = await Booking.create({
       item: itemId,
       user: req.user.userId,
       startDate,
       endDate,
+      totalAmount,
     });
 
     res.status(201).json({
@@ -111,7 +120,7 @@ const acceptBooking = async (req, res) => {
 const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate("item")
+      .populate({ path: "item", populate: { path: "owner", select: "name avatar" } })
       .populate("user", "name avatar");
 
     if (!booking) {
