@@ -13,6 +13,15 @@ app.get("/", (_req, res) => { // test route
   res.send("API running 🚀");
 });
 
+// Health check — used by Render (and uptime monitors) to verify the service is alive
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const authRoutes = require("./modules/auth/auth.routes");
