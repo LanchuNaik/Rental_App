@@ -31,8 +31,9 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
   const [month,        setMonth]        = useState(today.getMonth());
   const [startDate,    setStartDate]    = useState(null);
   const [endDate,      setEndDate]      = useState(null);
-  const [blockedDates, setBlockedDates] = useState([]);
-  const [loadingDates, setLoadingDates] = useState(false);
+  // Map of "YYYY-MM-DD" -> [{ start: minutesFromMidnight, end: minutesFromMidnight }]
+  const [bookingsByDate, setBookingsByDate] = useState({});
+  const [loadingDates,   setLoadingDates]   = useState(false);
 
   const availFrom = availableFrom ? new Date(availableFrom) : null;
   const availTo   = availableTo   ? new Date(availableTo)   : null;
@@ -44,19 +45,27 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
       try {
         const res = await getAvailabilityApi(itemId);
         const data = res.data || [];
-        const allDates = [];
-        data.forEach((entry) => {
-          if (typeof entry === 'string') {
-            allDates.push(entry.slice(0, 10));
-          } else if (entry.startDate && entry.endDate) {
-            const s = new Date(entry.startDate);
-            const e = new Date(entry.endDate);
-            for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-              allDates.push(d.toISOString().slice(0, 10));
-            }
+        const byDate = {};
+        data.forEach((booking) => {
+          if (!booking.startDate || !booking.endDate) return;
+          const s = new Date(booking.startDate);
+          const e = new Date(booking.endDate);
+
+          const startMidnight = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+          const endMidnight   = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+
+          // Walk every day this booking touches and record the booked minutes on that day
+          for (let d = new Date(startMidnight); d <= endMidnight; d.setDate(d.getDate() + 1)) {
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const isFirstDay = d.getTime() === startMidnight.getTime();
+            const isLastDay  = d.getTime() === endMidnight.getTime();
+            const startMin   = isFirstDay ? s.getHours() * 60 + s.getMinutes() : 0;
+            const endMin     = isLastDay  ? e.getHours() * 60 + e.getMinutes() : 24 * 60;
+            if (endMin <= startMin) continue;
+            (byDate[key] = byDate[key] || []).push({ start: startMin, end: endMin });
           }
         });
-        setBlockedDates(allDates);
+        setBookingsByDate(byDate);
       } catch {
         // silently keep no blocked dates on error
       } finally {
@@ -66,10 +75,47 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
     fetchAvailability();
   }, [itemId]);
 
+  // Merge overlapping intervals and return total covered minutes
+  const coverageFor = (key) => {
+    const list = bookingsByDate[key];
+    if (!list) return { covered: 0, intervals: [] };
+    const sorted = [...list].sort((a, b) => a.start - b.start);
+    const merged = [];
+    sorted.forEach(({ start, end }) => {
+      const last = merged[merged.length - 1];
+      if (last && start <= last.end) last.end = Math.max(last.end, end);
+      else merged.push({ start, end });
+    });
+    const covered = merged.reduce((sum, { start, end }) => sum + (end - start), 0);
+    return { covered, intervals: merged };
+  };
+
+  // "Fully booked" if no contiguous free gap of >= 2 hours remains
+  const FREE_GAP_MIN = 120;
+  const isFullyBooked = (key) => {
+    const { intervals } = coverageFor(key);
+    if (!intervals.length) return false;
+    let cursor = 0;
+    for (const { start, end } of intervals) {
+      if (start - cursor >= FREE_GAP_MIN) return false;
+      cursor = Math.max(cursor, end);
+    }
+    return 24 * 60 - cursor < FREE_GAP_MIN;
+  };
+
+  const fmt = (m) => {
+    const h = Math.floor(m / 60);
+    const mm = String(m % 60).padStart(2, '0');
+    const hour12 = ((h + 11) % 12) + 1;
+    const period = h < 12 ? 'AM' : 'PM';
+    return `${hour12}:${mm} ${period}`;
+  };
+
   const cells = buildCalendar(year, month);
 
   const dateStr = (day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const isBlocked    = (day) => blockedDates.includes(dateStr(day));
+  const isBlocked    = (day) => !!bookingsByDate[dateStr(day)];
+  const isFullyBookedDay = (day) => isFullyBooked(dateStr(day));
   const isPast       = (day) => new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const isOutOfRange = (day) => {
     const d = new Date(year, month, day);
@@ -87,7 +133,9 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
   };
 
   const handleDayPress = (day) => {
-    if (isBlocked(day) || isPast(day) || isOutOfRange(day)) return;
+    // Past / out-of-range / fully-booked days are hard-blocked.
+    // Partially-booked (yellow) days are tappable so renters can pick a free time slot.
+    if (isPast(day) || isOutOfRange(day) || isFullyBookedDay(day)) return;
     const ds = dateStr(day);
     if (!startDate || (startDate && endDate)) {
       setStartDate(ds); setEndDate(null);
@@ -153,22 +201,25 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
         <View style={styles.grid}>
           {cells.map((day, i) => {
             if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-            const blocked   = isBlocked(day);
-            const past      = isPast(day);
-            const outRange  = isOutOfRange(day);
-            const start     = isStart(day);
-            const end       = isEnd(day);
-            const inRange   = isInRange(day);
-            const disabled  = blocked || past || outRange;
+            const blocked      = isBlocked(day);
+            const fullyBlocked = blocked && isFullyBookedDay(day);
+            const partial      = blocked && !fullyBlocked;
+            const past         = isPast(day);
+            const outRange     = isOutOfRange(day);
+            const start        = isStart(day);
+            const end          = isEnd(day);
+            const inRange      = isInRange(day);
+            const disabled     = past || outRange || fullyBlocked;
             return (
               <TouchableOpacity
                 key={day}
                 style={[
                   styles.cell,
-                  inRange  && styles.cellInRange,
+                  inRange && styles.cellInRange,
+                  partial && !start && !end && styles.cellLimited,
+                  fullyBlocked && styles.cellBlocked,
                   (start || end) && styles.cellSelected,
-                  (past || outRange) && !blocked && styles.cellDisabled,
-                  blocked && styles.cellBlocked,
+                  (past || outRange) && styles.cellDisabled,
                 ]}
                 onPress={() => handleDayPress(day)}
                 disabled={disabled}
@@ -176,9 +227,10 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
                 <Text style={[
                   styles.cellText,
                   (start || end) && styles.cellTextSelected,
-                  inRange  && styles.cellTextInRange,
-                  (past || outRange) && !blocked && styles.cellTextDisabled,
-                  blocked && styles.cellTextBlocked,
+                  inRange && styles.cellTextInRange,
+                  partial && !start && !end && styles.cellTextLimited,
+                  fullyBlocked && styles.cellTextBlocked,
+                  (past || outRange) && styles.cellTextDisabled,
                 ]}>
                   {day}
                 </Text>
@@ -187,14 +239,36 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
           })}
         </View>
 
+        {/* Booked times for selected start date */}
+        {startDate && bookingsByDate[startDate] && (
+          <View style={styles.bookedPanel}>
+            <View style={styles.bookedPanelHeader}>
+              <Ionicons name="time-outline" size={16} color={colors.warning} />
+              <Text style={styles.bookedPanelTitle}>Booked times on {startDate}</Text>
+            </View>
+            {coverageFor(startDate).intervals.map((iv, i) => (
+              <Text key={i} style={styles.bookedPanelRow}>
+                • {fmt(iv.start)} – {fmt(iv.end)}
+              </Text>
+            ))}
+            <Text style={styles.bookedPanelHint}>
+              Pick a pickup/return time outside these ranges on the next screen.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-            <Text style={styles.legendText}>Selected / Range</Text>
+            <Text style={styles.legendText}>Selected</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+            <Text style={styles.legendText}>Limited</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
-            <Text style={styles.legendText}>Unavailable</Text>
+            <Text style={styles.legendText}>Fully booked</Text>
           </View>
         </View>
       </ScrollView>
@@ -203,16 +277,22 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
         <View style={styles.selectionInfo}>
           {startDate ? (
             <Text style={styles.selectionText}>
-              {startDate}{endDate ? ` → ${endDate}  (${nights} night${nights !== 1 ? 's' : ''})` : '  — pick end date'}
+              {endDate
+                ? `${startDate} → ${endDate}  (${nights} night${nights !== 1 ? 's' : ''})`
+                : `${startDate}  (same-day rental — tap another date for multi-day)`}
             </Text>
           ) : (
             <Text style={styles.selectionPlaceholder}>Tap a date to start</Text>
           )}
         </View>
         <TouchableOpacity
-          style={[styles.continueButton, (!startDate || !endDate) && styles.buttonDisabled]}
-          onPress={() => navigation.navigate('BookingRequest', { startDate, endDate, itemId })}
-          disabled={!startDate || !endDate}
+          style={[styles.continueButton, !startDate && styles.buttonDisabled]}
+          onPress={() => navigation.navigate('BookingRequest', {
+            startDate,
+            endDate: endDate || startDate,
+            itemId,
+          })}
+          disabled={!startDate}
           activeOpacity={0.85}
         >
           <Text style={styles.continueButtonText}>Continue</Text>
@@ -243,12 +323,19 @@ const styles = StyleSheet.create({
   cellSelected:   { backgroundColor: colors.primary, borderRadius: radius.full },
   cellInRange:    { backgroundColor: colors.primaryLight },
   cellDisabled:   { opacity: 0.35 },
+  cellLimited:    { backgroundColor: '#FEF3C7', borderRadius: radius.full, borderWidth: 1, borderColor: colors.warning },
   cellBlocked:    { backgroundColor: '#FEE2E2', borderRadius: radius.full, borderWidth: 1, borderColor: colors.error },
   cellText:       { ...typography.body, color: colors.textPrimary },
   cellTextSelected: { color: colors.textInverse, fontWeight: '700' },
   cellTextInRange:  { color: colors.primary, fontWeight: '600' },
   cellTextDisabled: { color: colors.textMuted },
+  cellTextLimited:  { color: colors.warning, fontWeight: '700' },
   cellTextBlocked:  { color: colors.error, fontWeight: '700', textDecorationLine: 'line-through' },
+  bookedPanel:        { marginHorizontal: spacing.xl, marginTop: spacing.lg, padding: spacing.lg, backgroundColor: '#FEF3C7', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.warning },
+  bookedPanelHeader:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  bookedPanelTitle:   { ...typography.bodySmall, fontWeight: '700', color: colors.warning },
+  bookedPanelRow:     { ...typography.bodySmall, color: colors.textPrimary, marginVertical: 2 },
+  bookedPanelHint:    { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm, fontStyle: 'italic' },
   legend:         { flexDirection: 'row', justifyContent: 'center', gap: spacing.xl, padding: spacing.xl },
   legendItem:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendDot:      { width: 10, height: 10, borderRadius: radius.full },

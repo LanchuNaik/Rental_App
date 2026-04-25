@@ -21,15 +21,13 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // 🔥 check if already booked
+    // 🔥 check if already booked — only active bookings block the slot
+    // (completed/rejected/cancelled bookings free up the dates again)
     const existing = await Booking.findOne({
       item: itemId,
-      $or: [
-        {
-          startDate: { $lte: endDate },
-          endDate: { $gte: startDate },
-        },
-      ],
+      status: { $in: ["pending", "confirmed", "active"] },
+      startDate: { $lte: endDate },
+      endDate:   { $gte: startDate },
     });
 
     if (existing) {
@@ -44,7 +42,8 @@ const createBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Item not found" });
     }
 
-    const days = Math.round((new Date(endDate) - new Date(startDate)) / 86400000);
+    // Charge at least 1 day even for same-day (partial-day) rentals
+    const days = Math.max(1, Math.ceil((new Date(endDate) - new Date(startDate)) / 86400000));
     const totalAmount = item.price * days;
 
     const booking = await Booking.create({

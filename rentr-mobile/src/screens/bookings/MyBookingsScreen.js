@@ -52,8 +52,15 @@ const STATUS_CONFIG = {
 };
 
 function formatDateRange(start, end) {
-  const opts = { month: 'short', day: 'numeric', year: 'numeric' };
-  return `${new Date(start).toLocaleDateString('en-US', opts)} – ${new Date(end).toLocaleDateString('en-US', opts)}`;
+  const dOpts = { month: 'short', day: 'numeric' };
+  const tOpts = { hour: 'numeric', minute: '2-digit', hour12: true };
+  const s = new Date(start);
+  const e = new Date(end);
+  const sameDay = s.toDateString() === e.toDateString();
+  if (sameDay) {
+    return `${s.toLocaleDateString('en-US', dOpts)} · ${s.toLocaleTimeString([], tOpts)} → ${e.toLocaleTimeString([], tOpts)}`;
+  }
+  return `${s.toLocaleDateString('en-US', dOpts)}, ${s.toLocaleTimeString([], tOpts)} → ${e.toLocaleDateString('en-US', dOpts)}, ${e.toLocaleTimeString([], tOpts)}`;
 }
 
 function daysBetween(start, end) {

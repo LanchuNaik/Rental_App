@@ -4,13 +4,25 @@
 
 import { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity, Platform,
   ScrollView, TextInput, StatusBar, ActivityIndicator,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemByIdApi } from '../../services/item.service';
+
+// Combine "YYYY-MM-DD" + a Date carrying H:M into an ISO datetime string
+function combineDateTime(dateStr, timeDate) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const out = new Date(y, m - 1, d, timeDate.getHours(), timeDate.getMinutes(), 0, 0);
+  return out.toISOString();
+}
+
+function formatTime(d) {
+  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 export default function BookingRequestScreen({ navigation, route }) {
   const { startDate = '', endDate = '', itemId } = route?.params || {};
@@ -18,6 +30,16 @@ export default function BookingRequestScreen({ navigation, route }) {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Default times: pickup 9 AM, return 6 PM
+  const [startTime, setStartTime] = useState(() => { const d = new Date(); d.setHours(9, 0, 0, 0); return d; });
+  const [endTime,   setEndTime]   = useState(() => { const d = new Date(); d.setHours(18, 0, 0, 0); return d; });
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker,   setShowEndPicker]   = useState(false);
+
+  const isSameDay = startDate === endDate;
+  // For same-day, return-time must be after start-time
+  const sameDayTimeError = isSameDay && endTime <= startTime;
 
   useEffect(() => {
     if (!itemId) { setLoading(false); return; }
@@ -41,11 +63,13 @@ export default function BookingRequestScreen({ navigation, route }) {
     fetchItem();
   }, [itemId]);
 
-  const nights = startDate && endDate
-    ? Math.round((new Date(endDate) - new Date(startDate)) / 86400000)
+  // Charge at least 1 day, even for same-day rentals (mirrors backend logic)
+  const rawDays = startDate && endDate
+    ? Math.ceil((new Date(endDate) - new Date(startDate)) / 86400000)
     : 0;
+  const days = Math.max(rawDays, startDate ? 1 : 0);
 
-  const rentTotal = item ? item.price * nights : 0;
+  const rentTotal = item ? item.price * days : 0;
   const total     = item ? rentTotal + item.deposit + item.serviceFee : 0;
 
   const Row = ({ label, value, bold }) => (
@@ -102,15 +126,66 @@ export default function BookingRequestScreen({ navigation, route }) {
           </View>
           <View style={styles.itemInfo}>
             <Text style={styles.itemTitle}>{item.title}</Text>
-            <Text style={styles.itemDates}>{startDate}  →  {endDate}</Text>
-            <Text style={styles.itemNights}>{nights} night{nights !== 1 ? 's' : ''}</Text>
+            <Text style={styles.itemDates}>
+              {isSameDay ? startDate : `${startDate}  →  ${endDate}`}
+            </Text>
+            <Text style={styles.itemNights}>
+              {days} {days === 1 ? 'day' : 'days'}{isSameDay ? ' (same-day)' : ''}
+            </Text>
           </View>
         </View>
+
+        {/* Pickup & Return Time */}
+        <Text style={styles.sectionTitle}>Pickup & Return Time</Text>
+        <View style={styles.timeCard}>
+          <TouchableOpacity style={styles.timeRow} onPress={() => setShowStartPicker(true)}>
+            <Ionicons name="time-outline" size={18} color={colors.primary} />
+            <Text style={styles.timeLabel}>Pickup time</Text>
+            <Text style={styles.timeValue}>{formatTime(startTime)}</Text>
+          </TouchableOpacity>
+          <View style={styles.timeDivider} />
+          <TouchableOpacity style={styles.timeRow} onPress={() => setShowEndPicker(true)}>
+            <Ionicons name="time-outline" size={18} color={colors.accent} />
+            <Text style={styles.timeLabel}>Return time</Text>
+            <Text style={styles.timeValue}>{formatTime(endTime)}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {sameDayTimeError && (
+          <Text style={styles.timeErrorText}>
+            Return time must be after pickup time for same-day rentals.
+          </Text>
+        )}
+
+        {showStartPicker && (
+          <DateTimePicker
+            value={startTime}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, selected) => {
+              setShowStartPicker(Platform.OS === 'ios');
+              if (selected) setStartTime(selected);
+            }}
+          />
+        )}
+        {showEndPicker && (
+          <DateTimePicker
+            value={endTime}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, selected) => {
+              setShowEndPicker(Platform.OS === 'ios');
+              if (selected) setEndTime(selected);
+            }}
+          />
+        )}
 
         {/* Price breakdown */}
         <Text style={styles.sectionTitle}>Price Breakdown</Text>
         <View style={styles.breakdownCard}>
-          <Row label={`₹${item.price} × ${nights} nights`}  value={`₹${rentTotal}`} />
+          <Row label={`₹${item.price} × ${days} ${days === 1 ? 'day' : 'days'}`}  value={`₹${rentTotal}`} />
           {item.deposit > 0 && (
             <Row label="Refundable deposit" value={`₹${item.deposit}`} />
           )}
@@ -150,16 +225,18 @@ export default function BookingRequestScreen({ navigation, route }) {
           <Text style={styles.totalAmount}>₹{total}</Text>
         </View>
         <TouchableOpacity
-          style={styles.requestButton}
-          onPress={() =>
+          style={[styles.requestButton, sameDayTimeError && styles.buttonDisabled]}
+          onPress={() => {
+            if (sameDayTimeError) return;
             navigation.navigate('Checkout', {
               total,
-              startDate,
-              endDate,
+              startDate: combineDateTime(startDate, startTime),
+              endDate:   combineDateTime(endDate,   endTime),
               itemId: item.id,
               message: message.trim(),
-            })
-          }
+            });
+          }}
+          disabled={sameDayTimeError}
           activeOpacity={0.85}
         >
           <Text style={styles.requestButtonText}>Continue to Payment</Text>
@@ -200,4 +277,11 @@ const styles = StyleSheet.create({
   totalAmount:     { ...typography.h2, color: colors.textPrimary },
   requestButton:   { backgroundColor: colors.primary, height: 56, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', ...shadows.medium },
   requestButtonText: { ...typography.button, color: colors.textInverse },
+  buttonDisabled:  { opacity: 0.45 },
+  timeCard:        { backgroundColor: colors.surface, borderRadius: radius.xl, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  timeRow:         { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
+  timeLabel:       { ...typography.body, color: colors.textPrimary, flex: 1 },
+  timeValue:       { ...typography.body, color: colors.primary, fontWeight: '700' },
+  timeDivider:     { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.lg },
+  timeErrorText:   { ...typography.bodySmall, color: colors.error, marginBottom: spacing.lg, textAlign: 'center' },
 });

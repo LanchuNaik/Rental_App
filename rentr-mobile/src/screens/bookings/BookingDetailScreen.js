@@ -61,6 +61,11 @@ function formatYear(dateStr) {
   return new Date(dateStr).getFullYear().toString();
 }
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 function daysBetween(start, end) {
   return Math.round((new Date(end) - new Date(start)) / 86400000);
 }
@@ -274,18 +279,18 @@ export default function BookingDetailScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>Rental Period</Text>
           <View style={styles.datesRow}>
             <View style={styles.dateBox}>
-              <Text style={styles.dateBoxLabel}>From</Text>
+              <Text style={styles.dateBoxLabel}>Pickup</Text>
               <Text style={styles.dateBoxValue}>{formatDate(booking.startDate)}</Text>
-              <Text style={styles.dateBoxYear}>{formatYear(booking.startDate)}</Text>
+              <Text style={styles.dateBoxYear}>{formatYear(booking.startDate)} · {formatTime(booking.startDate)}</Text>
             </View>
             <View style={styles.dateArrow}>
               <Ionicons name="arrow-forward" size={20} color={colors.textMuted} />
               <Text style={styles.daysLabel}>{days} day{days !== 1 ? 's' : ''}</Text>
             </View>
             <View style={styles.dateBox}>
-              <Text style={styles.dateBoxLabel}>To</Text>
+              <Text style={styles.dateBoxLabel}>Return</Text>
               <Text style={styles.dateBoxValue}>{formatDate(booking.endDate)}</Text>
-              <Text style={styles.dateBoxYear}>{formatYear(booking.endDate)}</Text>
+              <Text style={styles.dateBoxYear}>{formatYear(booking.endDate)} · {formatTime(booking.endDate)}</Text>
             </View>
           </View>
         </View>
