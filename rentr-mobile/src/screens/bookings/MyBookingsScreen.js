@@ -24,6 +24,7 @@ import {
   acceptBookingApi,
   rejectBookingApi,
 } from '../../services/booking.service';
+import { getProfileApi } from '../../services/user.service';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 
@@ -32,6 +33,7 @@ const BOOKING_TABS = ['Upcoming', 'Active', 'Past', 'Cancelled'];
 
 const STATUS_TO_TAB = {
   pending:   'Upcoming',
+  confirmed: 'Upcoming',
   accepted:  'Upcoming',
   active:    'Active',
   completed: 'Past',
@@ -41,6 +43,7 @@ const STATUS_TO_TAB = {
 
 const STATUS_CONFIG = {
   pending:   { label: 'Pending',   color: colors.warning, bg: '#FEF3C7' },
+  confirmed: { label: 'Accepted',  color: colors.success, bg: '#D1FAE5' },
   accepted:  { label: 'Accepted',  color: colors.success, bg: '#D1FAE5' },
   active:    { label: 'Active',    color: colors.success, bg: '#D1FAE5' },
   completed: { label: 'Completed', color: colors.primary, bg: colors.primaryLight },
@@ -104,7 +107,7 @@ function BookingCard({ booking, onPress }) {
           </View>
           <View style={styles.cardFooter}>
             <StatusBadge status={booking.status} />
-            <Text style={styles.priceText}>₹{booking.totalPrice}</Text>
+            <Text style={styles.priceText}>₹{booking.totalAmount}</Text>
           </View>
         </View>
       </View>
@@ -117,13 +120,13 @@ function BookingCard({ booking, onPress }) {
 }
 
 function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoading }) {
-  const renterName = request.renter?.name || 'Renter';
-  const days = daysBetween(request.startDate, request.endDate);
+  const renterName  = request.user?.name || request.renter?.name || 'Unknown';
+  const days        = daysBetween(request.startDate, request.endDate);
   const avatarColor = AVATAR_COLORS[index % AVATAR_COLORS.length];
+  const isPending   = request.status === 'pending';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {/* Renter row */}
       <View style={styles.requestHeader}>
         <View style={[styles.reqAvatar, { backgroundColor: avatarColor }]}>
           <Text style={styles.reqAvatarText}>{getInitials(renterName)}</Text>
@@ -135,7 +138,6 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
 
-      {/* Item info */}
       <View style={styles.reqItemSection}>
         <View style={styles.reqItemRow}>
           <Ionicons name="cube-outline" size={14} color={colors.primary} />
@@ -148,35 +150,39 @@ function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoadi
         </View>
       </View>
 
-      {/* Amount + actions */}
       <View style={styles.reqFooter}>
         <View>
           <Text style={styles.reqAmountLabel}>Total</Text>
-          <Text style={styles.reqAmountValue}>₹{request.totalPrice}</Text>
+          <Text style={styles.reqAmountValue}>₹{request.totalAmount}</Text>
         </View>
-        <View style={styles.reqActions}>
-          <TouchableOpacity
-            style={styles.declineBtn}
-            onPress={onDecline}
-            disabled={actionLoading === 'reject' || actionLoading === 'accept'}
-          >
-            {actionLoading === 'reject'
-              ? <ActivityIndicator size="small" color={colors.error} />
-              : <Text style={styles.declineBtnText}>Decline</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.acceptBtn}
-            onPress={onAccept}
-            disabled={actionLoading === 'accept' || actionLoading === 'reject'}
-          >
-            {actionLoading === 'accept'
-              ? <ActivityIndicator size="small" color={colors.textInverse} />
-              : <>
-                  <Ionicons name="checkmark" size={14} color={colors.textInverse} />
-                  <Text style={styles.acceptBtnText}>Accept</Text>
-                </>}
-          </TouchableOpacity>
-        </View>
+
+        {isPending ? (
+          <View style={styles.reqActions}>
+            <TouchableOpacity
+              style={styles.declineBtn}
+              onPress={onDecline}
+              disabled={actionLoading === 'reject' || actionLoading === 'accept'}
+            >
+              {actionLoading === 'reject'
+                ? <ActivityIndicator size="small" color={colors.error} />
+                : <Text style={styles.declineBtnText}>Decline</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.acceptBtn}
+              onPress={onAccept}
+              disabled={actionLoading === 'accept' || actionLoading === 'reject'}
+            >
+              {actionLoading === 'accept'
+                ? <ActivityIndicator size="small" color={colors.textInverse} />
+                : <><Ionicons name="checkmark" size={14} color={colors.textInverse} /><Text style={styles.acceptBtnText}>Accept</Text></>}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.acceptedBadge}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            <Text style={styles.acceptedBadgeText}>Accepted</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -199,6 +205,10 @@ export default function MyBookingsScreen({ navigation }) {
   const [rRefreshing,   setRRefreshing]   = useState(false);
   const [rError,        setRError]        = useState(null);
   const [actionLoading, setActionLoading] = useState({});
+
+  // ── Role state — controls visibility of the "Incoming Requests" tab
+  const [role, setRole] = useState(null);
+  const canList = role === 'owner' || role === 'both' || role === null;
 
   const fetchBookings = async (isRefresh = false) => {
     if (isRefresh) setBRefreshing(true); else setBLoading(true);
@@ -227,8 +237,23 @@ export default function MyBookingsScreen({ navigation }) {
   };
 
   useFocusEffect(useCallback(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await getProfileApi();
+        const r = res.data?.role || null;
+        setRole(r);
+        if (r === 'renter') {
+          setMode('bookings');           // force renters into bookings view
+          setRLoading(false);            // skip request loading spinner
+        } else {
+          fetchRequests();
+        }
+      } catch {
+        fetchRequests();                 // fallback if profile fetch fails
+      }
+    };
     fetchBookings();
-    fetchRequests();
+    fetchRole();
   }, []));
 
   const handleAccept = (id) => {
@@ -240,7 +265,7 @@ export default function MyBookingsScreen({ navigation }) {
           setActionLoading((p) => ({ ...p, [id]: 'accept' }));
           try {
             await acceptBookingApi(id);
-            setRequests((p) => p.filter((r) => r._id !== id));
+            setRequests((p) => p.map((r) => r._id === id ? { ...r, status: 'confirmed' } : r));
             Alert.alert('Accepted', 'The renter has been notified.');
           } catch (err) {
             Alert.alert('Error', err.message || 'Could not accept booking');
@@ -288,41 +313,43 @@ export default function MyBookingsScreen({ navigation }) {
         )}
       </View>
 
-      {/* ── Mode switcher pills ── */}
-      <View style={styles.modeSwitcher}>
-        <TouchableOpacity
-          style={[styles.modeBtn, mode === 'bookings' && styles.modeBtnActive]}
-          onPress={() => setMode('bookings')}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={15}
-            color={mode === 'bookings' ? colors.textInverse : colors.textSecondary}
-          />
-          <Text style={[styles.modeBtnText, mode === 'bookings' && styles.modeBtnTextActive]}>
-            My Bookings
-          </Text>
-        </TouchableOpacity>
+      {/* ── Mode switcher pills — hidden for renter-only users ── */}
+      {canList && (
+        <View style={styles.modeSwitcher}>
+          <TouchableOpacity
+            style={[styles.modeBtn, mode === 'bookings' && styles.modeBtnActive]}
+            onPress={() => setMode('bookings')}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={15}
+              color={mode === 'bookings' ? colors.textInverse : colors.textSecondary}
+            />
+            <Text style={[styles.modeBtnText, mode === 'bookings' && styles.modeBtnTextActive]}>
+              My Bookings
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.modeBtn, mode === 'requests' && styles.modeBtnActive]}
-          onPress={() => setMode('requests')}
-        >
-          <Ionicons
-            name="arrow-down-circle-outline"
-            size={15}
-            color={mode === 'requests' ? colors.textInverse : colors.textSecondary}
-          />
-          <Text style={[styles.modeBtnText, mode === 'requests' && styles.modeBtnTextActive]}>
-            Incoming Requests
-          </Text>
-          {requests.length > 0 && (
-            <View style={styles.modeBadge}>
-              <Text style={styles.modeBadgeText}>{requests.length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.modeBtn, mode === 'requests' && styles.modeBtnActive]}
+            onPress={() => setMode('requests')}
+          >
+            <Ionicons
+              name="arrow-down-circle-outline"
+              size={15}
+              color={mode === 'requests' ? colors.textInverse : colors.textSecondary}
+            />
+            <Text style={[styles.modeBtnText, mode === 'requests' && styles.modeBtnTextActive]}>
+              Incoming Requests
+            </Text>
+            {requests.filter((r) => r.status === 'pending').length > 0 && (
+              <View style={styles.modeBadge}>
+                <Text style={styles.modeBadgeText}>{requests.filter((r) => r.status === 'pending').length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── My Bookings view ── */}
       {mode === 'bookings' && (
@@ -558,7 +585,9 @@ const styles = StyleSheet.create({
   declineBtn: { borderWidth: 1.5, borderColor: colors.error, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, alignItems: 'center', justifyContent: 'center', minWidth: 76 },
   declineBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.error },
   acceptBtn: { backgroundColor: colors.success, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minWidth: 76, justifyContent: 'center' },
-  acceptBtnText: { ...typography.bodySmall, fontWeight: '600', color: colors.textInverse },
+  acceptBtnText:    { ...typography.bodySmall, fontWeight: '600', color: colors.textInverse },
+  acceptedBadge:    { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: '#D1FAE5', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full },
+  acceptedBadgeText:{ ...typography.bodySmall, fontWeight: '700', color: colors.success },
 
   emptyState: { alignItems: 'center', paddingTop: spacing.xxxl * 2, gap: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.textSecondary },

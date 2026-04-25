@@ -90,6 +90,25 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
+// DELETE /api/profile/avatar — remove the user's profile photo
+const deleteAvatar = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $unset: { avatar: "" } },
+      { new: true }
+    ).select("-password -resetPasswordToken -resetPasswordExpires");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({ success: true, message: "Avatar removed", data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // PUT /api/profile/role — logged in user sets their role
 const updateRole = async (req, res) => {
   try {
@@ -112,4 +131,4 @@ const updateRole = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, updateAvatar, getPublicProfile, updateRole };
+module.exports = { getProfile, updateProfile, updateAvatar, deleteAvatar, getPublicProfile, updateRole };

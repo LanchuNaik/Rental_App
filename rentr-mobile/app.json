@@ -27,7 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rentr needs access to your photos to upload item and profile images.",
+          "cameraPermission": "Rentr needs camera access to take pickup and return photos."
+        }
+      ]
     ]
   }
 }

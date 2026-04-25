@@ -242,8 +242,10 @@ const uploadPickupPhotos = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Only the item owner uploads pickup photos
-    if (booking.item.owner.toString() !== req.user.userId) {
+    // Either the item owner or the renter can upload pickup photos
+    const isOwner  = booking.item.owner.toString() === req.user.userId;
+    const isRenter = booking.user.toString()       === req.user.userId;
+    if (!isOwner && !isRenter) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
@@ -278,8 +280,10 @@ const confirmReturn = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Only the item owner confirms the return
-    if (booking.item.owner.toString() !== req.user.userId) {
+    // Either the item owner or the renter can confirm the return
+    const isOwner  = booking.item.owner.toString() === req.user.userId;
+    const isRenter = booking.user.toString()       === req.user.userId;
+    if (!isOwner && !isRenter) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 

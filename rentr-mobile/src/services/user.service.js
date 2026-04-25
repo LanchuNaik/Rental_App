@@ -19,6 +19,9 @@ export const updateAvatarApi = (imageUri) => {
   });
 };
 
+export const deleteAvatarApi = () =>
+  apiClient.delete('/profile/avatar');
+
 export const updateRoleApi = (role) =>
   apiClient.put('/profile/role', { role });
 

@@ -64,7 +64,7 @@ function timeAgo(dateStr) {
 }
 
 function RequestCard({ request, index, onAccept, onDecline, onPress, actionLoading }) {
-  const renterName = request.user?.name || 'Unknown';
+  const renterName = request.user?.name || request.renter?.name || 'Unknown';
   const days       = daysBetween(request.startDate, request.endDate);
   const isPending  = request.status === 'pending';
 

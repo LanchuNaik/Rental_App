@@ -1,7 +1,3 @@
-// ============================================
-// EditProfileScreen — Edit user profile form
-// ============================================
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,23 +7,34 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
-import { getProfileApi, updateProfileApi } from '../../services/user.service';
+import {
+  getProfileApi,
+  updateProfileApi,
+  updateAvatarApi,
+  deleteAvatarApi,
+} from '../../services/user.service';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 
 export default function EditProfileScreen({ navigation }) {
   const [fullName, setFullName] = useState('');
   const [bio,      setBio]      = useState('');
   const [phone,    setPhone]    = useState('');
   const [email,    setEmail]    = useState('');
+  const [avatar,   setAvatar]   = useState(null); // local uri or server path
 
-  const [focusedField, setFocusedField] = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [loading,  setLoading]  = useState(true);
+  const [focusedField,  setFocusedField]  = useState(null);
+  const [saving,        setSaving]        = useState(false);
+  const [loading,       setLoading]       = useState(true);
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
-  // Load current profile data when screen opens
   useEffect(() => {
     const load = async () => {
       try {
@@ -37,6 +44,9 @@ export default function EditProfileScreen({ navigation }) {
         setBio(u.bio        || '');
         setPhone(u.phone    || '');
         setEmail(u.email    || '');
+        if (u.avatar) {
+          setAvatar(`${BASE_URL}/${u.avatar}`);
+        }
       } catch (err) {
         Alert.alert('Error', err.message);
       } finally {
@@ -45,6 +55,65 @@ export default function EditProfileScreen({ navigation }) {
     };
     load();
   }, []);
+
+  const handleAvatarPress = () => {
+    const options = ['Choose from Library', 'Remove Photo', 'Cancel'];
+    Alert.alert('Profile Photo', 'What would you like to do?', [
+      {
+        text: 'Choose from Library',
+        onPress: pickAvatar,
+      },
+      {
+        text: 'Remove Photo',
+        style: 'destructive',
+        onPress: removeAvatar,
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickAvatar = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const uri = result.assets[0].uri;
+    setAvatarLoading(true);
+    try {
+      const res = await updateAvatarApi(uri);
+      const updatedPath = res.data?.avatar;
+      setAvatar(updatedPath ? `${BASE_URL}/${updatedPath}` : uri);
+      Alert.alert('Done', 'Profile photo updated.');
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not upload photo.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!avatar) return;
+    setAvatarLoading(true);
+    try {
+      await deleteAvatarApi();
+      setAvatar(null);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not remove photo.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
@@ -69,6 +138,8 @@ export default function EditProfileScreen({ navigation }) {
     focusedField === field && styles.inputFocused,
   ];
 
+  const initials = fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+
   return (
     <Screen>
       {/* Header */}
@@ -88,16 +159,22 @@ export default function EditProfileScreen({ navigation }) {
 
         {/* Avatar Edit */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarInitials}>
-                {fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.avatarEditOverlay}>
+          <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress} activeOpacity={0.8}>
+            {avatarLoading ? (
+              <View style={[styles.avatar, styles.avatarLoading]}>
+                <ActivityIndicator color={colors.textInverse} />
+              </View>
+            ) : avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </View>
+            )}
+            <View style={styles.avatarEditOverlay}>
               <Ionicons name="camera" size={18} color={colors.textInverse} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.avatarHint}>Tap to change photo</Text>
         </View>
 
@@ -259,6 +336,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.medium,
+  },
+  avatarLoading: {
+    backgroundColor: colors.primary,
+  },
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: radius.full,
     ...shadows.medium,
   },
   avatarInitials: {

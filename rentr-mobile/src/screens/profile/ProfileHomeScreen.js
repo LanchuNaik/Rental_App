@@ -2,7 +2,7 @@
 // ProfileHomeScreen — Profile tab root screen
 // ============================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,21 +11,25 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getProfileApi } from '../../services/user.service';
 import { clearSession } from '../../services/storage.service';
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+
 const MENU_ITEMS = [
-  { label: 'My Listings',       icon: 'grid-outline',          route: 'MyListings',       color: colors.primary },
-  { label: 'Incoming Requests', icon: 'arrow-down-circle-outline', route: 'IncomingRequests', color: '#8B5CF6', stack: 'Bookings' },
-  { label: 'Saved Items',       icon: 'heart-outline',         route: 'SavedItems',       color: '#EF4444' },
-  { label: 'Earnings',          icon: 'wallet-outline',        route: 'Earnings',         color: colors.success },
-  { label: 'Notifications',     icon: 'notifications-outline', route: 'Notifications',    color: colors.info },
-  { label: 'Settings',          icon: 'settings-outline',      route: 'Settings',         color: colors.textSecondary },
-  { label: 'Help & Support',    icon: 'help-circle-outline',   route: 'HelpSupport',      color: colors.warning },
+  { label: 'My Listings',       icon: 'grid-outline',              route: 'MyListings',       color: colors.primary,       roles: ['owner', 'both'] },
+  { label: 'Incoming Requests', icon: 'arrow-down-circle-outline', route: 'IncomingRequests', color: '#8B5CF6',            roles: ['owner', 'both'], stack: 'Bookings' },
+  { label: 'Saved Items',       icon: 'heart-outline',             route: 'SavedItems',       color: '#EF4444',            roles: ['renter', 'both'] },
+  { label: 'Earnings',          icon: 'wallet-outline',            route: 'Earnings',         color: colors.success,       roles: ['owner', 'both'] },
+  { label: 'Notifications',     icon: 'notifications-outline',     route: 'Notifications',    color: colors.info,          roles: ['renter', 'owner', 'both'] },
+  { label: 'Settings',          icon: 'settings-outline',          route: 'Settings',         color: colors.textSecondary, roles: ['renter', 'owner', 'both'] },
+  { label: 'Help & Support',    icon: 'help-circle-outline',       route: 'HelpSupport',      color: colors.warning,       roles: ['renter', 'owner', 'both'] },
 ];
 
 function StarRow({ rating, reviewCount }) {
@@ -50,7 +54,7 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
   const [user, setUser]       = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const fetchProfile = async () => {
       try {
         const res = await getProfileApi();
@@ -62,7 +66,7 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
       }
     };
     fetchProfile();
-  }, []);
+  }, []));
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -95,6 +99,10 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
     ? new Date(user.createdAt).getFullYear().toString()
     : '—';
 
+  const role = user?.role || 'both';
+  const visibleMenuItems = MENU_ITEMS.filter((item) => item.roles.includes(role));
+  const canList = role === 'owner' || role === 'both';
+
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -116,9 +124,16 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
 
         {/* Avatar overlapping cover */}
         <View style={styles.avatarWrapper}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
-          </View>
+          {user?.avatar ? (
+            <Image
+              source={{ uri: `${BASE_URL}/${user.avatar}` }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            </View>
+          )}
         </View>
 
         {/* User Info */}
@@ -145,25 +160,27 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
           </View>
         </View>
 
-        {/* Stripe Connect Banner */}
-        <TouchableOpacity
-          style={styles.stripeBanner}
-          onPress={() => navigation.navigate('StripeConnect')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="card-outline" size={20} color={colors.primary} />
-          <Text style={styles.stripeBannerText}>Set up payouts — Connect with Stripe</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </TouchableOpacity>
+        {/* Stripe Connect Banner — owners only */}
+        {canList && (
+          <TouchableOpacity
+            style={styles.stripeBanner}
+            onPress={() => navigation.navigate('StripeConnect')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="card-outline" size={20} color={colors.primary} />
+            <Text style={styles.stripeBannerText}>Set up payouts — Connect with Stripe</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         {/* Menu */}
         <View style={styles.menuSection}>
-          {MENU_ITEMS.map((item, idx) => (
+          {visibleMenuItems.map((item, idx) => (
             <TouchableOpacity
               key={item.route}
               style={[
                 styles.menuRow,
-                idx < MENU_ITEMS.length - 1 && styles.menuRowBorder,
+                idx < visibleMenuItems.length - 1 && styles.menuRowBorder,
               ]}
               onPress={() =>
                 item.stack
@@ -233,6 +250,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: colors.background,
+    ...shadows.medium,
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.full,
     borderWidth: 4,
     borderColor: colors.background,
     ...shadows.medium,

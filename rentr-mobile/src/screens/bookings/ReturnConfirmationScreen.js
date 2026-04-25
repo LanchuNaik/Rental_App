@@ -60,6 +60,10 @@ export default function ReturnConfirmationScreen({ navigation, route }) {
   };
 
   const handleConfirmReturn = () => {
+    if (returnPhotos.length === 0) {
+      Alert.alert('Photos Required', 'Please take at least one photo of the returned item.');
+      return;
+    }
     Alert.alert(
       'Confirm Return',
       'This will mark the item as returned and release payment to your account.',

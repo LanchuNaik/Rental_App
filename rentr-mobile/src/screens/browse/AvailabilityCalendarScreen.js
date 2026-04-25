@@ -167,7 +167,8 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
                   styles.cell,
                   inRange  && styles.cellInRange,
                   (start || end) && styles.cellSelected,
-                  disabled && styles.cellDisabled,
+                  (past || outRange) && !blocked && styles.cellDisabled,
+                  blocked && styles.cellBlocked,
                 ]}
                 onPress={() => handleDayPress(day)}
                 disabled={disabled}
@@ -176,11 +177,11 @@ export default function AvailabilityCalendarScreen({ navigation, route }) {
                   styles.cellText,
                   (start || end) && styles.cellTextSelected,
                   inRange  && styles.cellTextInRange,
-                  disabled && styles.cellTextDisabled,
+                  (past || outRange) && !blocked && styles.cellTextDisabled,
+                  blocked && styles.cellTextBlocked,
                 ]}>
                   {day}
                 </Text>
-                {blocked && <View style={styles.blockedDot} />}
               </TouchableOpacity>
             );
           })}
@@ -242,11 +243,12 @@ const styles = StyleSheet.create({
   cellSelected:   { backgroundColor: colors.primary, borderRadius: radius.full },
   cellInRange:    { backgroundColor: colors.primaryLight },
   cellDisabled:   { opacity: 0.35 },
+  cellBlocked:    { backgroundColor: '#FEE2E2', borderRadius: radius.full, borderWidth: 1, borderColor: colors.error },
   cellText:       { ...typography.body, color: colors.textPrimary },
   cellTextSelected: { color: colors.textInverse, fontWeight: '700' },
   cellTextInRange:  { color: colors.primary, fontWeight: '600' },
   cellTextDisabled: { color: colors.textMuted },
-  blockedDot:     { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.error, position: 'absolute', bottom: 4 },
+  cellTextBlocked:  { color: colors.error, fontWeight: '700', textDecorationLine: 'line-through' },
   legend:         { flexDirection: 'row', justifyContent: 'center', gap: spacing.xl, padding: spacing.xl },
   legendItem:     { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendDot:      { width: 10, height: 10, borderRadius: radius.full },
