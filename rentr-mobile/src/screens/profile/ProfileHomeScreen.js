@@ -19,6 +19,7 @@ import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getProfileApi } from '../../services/user.service';
 import { clearSession } from '../../services/storage.service';
+import { disconnectSocket } from '../../services/socket';
 import { imageUrl } from '../../utils/imageUrl';
 
 const MENU_ITEMS = [
@@ -72,6 +73,7 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Log Out', style: 'destructive', onPress: async () => {
+          disconnectSocket();         // kill chat socket so next user opens a fresh one
           await clearSession();       // clear token from device
           if (onLogout) onLogout();   // tell App.js to go back to auth screens
         }
