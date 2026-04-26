@@ -13,8 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getMyItemsApi, deleteItemApi } from '../../services/item.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null;
@@ -40,7 +39,7 @@ function ListingCard({ listing, onToggle, onPress, onDelete }) {
       {/* Photo */}
       <View style={styles.cardPhoto}>
         {listing.image ? (
-          <Image source={{ uri: `${BASE_URL}/${listing.image}` }} style={styles.cardImage} />
+          <Image source={{ uri: imageUrl(listing.image) }} style={styles.cardImage} />
         ) : (
           <View style={[styles.cardImagePlaceholder, { backgroundColor: listing.placeholderColor }]}>
             <Ionicons name="image-outline" size={32} color={colors.textMuted} />

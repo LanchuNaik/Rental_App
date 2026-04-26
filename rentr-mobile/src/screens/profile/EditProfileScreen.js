@@ -20,8 +20,7 @@ import {
   updateAvatarApi,
   deleteAvatarApi,
 } from '../../services/user.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 export default function EditProfileScreen({ navigation }) {
   const [fullName, setFullName] = useState('');
@@ -45,7 +44,7 @@ export default function EditProfileScreen({ navigation }) {
         setPhone(u.phone    || '');
         setEmail(u.email    || '');
         if (u.avatar) {
-          setAvatar(`${BASE_URL}/${u.avatar}`);
+          setAvatar(imageUrl(u.avatar));
         }
       } catch (err) {
         Alert.alert('Error', err.message);
@@ -93,7 +92,7 @@ export default function EditProfileScreen({ navigation }) {
     try {
       const res = await updateAvatarApi(uri);
       const updatedPath = res.data?.avatar;
-      setAvatar(updatedPath ? `${BASE_URL}/${updatedPath}` : uri);
+      setAvatar(updatedPath ? imageUrl(updatedPath) : uri);
       Alert.alert('Done', 'Profile photo updated.');
     } catch (err) {
       Alert.alert('Error', err.message || 'Could not upload photo.');

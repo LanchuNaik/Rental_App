@@ -11,8 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemByIdApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -75,7 +74,7 @@ export default function ItemDetailScreen({ navigation, route }) {
       <View style={styles.photoCarousel}>
         {photos[0] && typeof photos[0] === 'string' ? (
           <Image
-            source={{ uri: `${BASE_URL}/${photos[activePhoto]}` }}
+            source={{ uri: imageUrl(photos[activePhoto]) }}
             style={styles.photoImage}
             resizeMode="cover"
           />

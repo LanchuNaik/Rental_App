@@ -14,11 +14,11 @@ import {
   Image,
 } from 'react-native';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getSavedItemsApi, unsaveItemApi } from '../../services/item.service';
+import { imageUrl } from '../../utils/imageUrl';
 
 function SavedCard({ item, onUnsave, onPress }) {
   return (
@@ -26,7 +26,7 @@ function SavedCard({ item, onUnsave, onPress }) {
       {/* Photo */}
       <View style={styles.cardPhoto}>
         {item.image ? (
-          <Image source={{ uri: `${BASE_URL}/${item.image}` }} style={styles.cardPhotoImg} resizeMode="cover" />
+          <Image source={{ uri: imageUrl(item.image) }} style={styles.cardPhotoImg} resizeMode="cover" />
         ) : (
           <View style={styles.cardPhotoPlaceholder}>
             <Ionicons name="image-outline" size={32} color={colors.textMuted} />

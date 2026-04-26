@@ -12,8 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemByIdApi, deleteItemApi } from '../../services/item.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -119,7 +118,7 @@ export default function ListingDetailScreen({ navigation, route }) {
         <View style={styles.photoArea}>
           {photos.length > 0 ? (
             <Image
-              source={{ uri: `${BASE_URL}/${photos[activePhoto]}` }}
+              source={{ uri: imageUrl(photos[activePhoto]) }}
               style={styles.photo}
             />
           ) : (

@@ -19,8 +19,7 @@ import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getProfileApi } from '../../services/user.service';
 import { clearSession } from '../../services/storage.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 const MENU_ITEMS = [
   { label: 'My Listings',       icon: 'grid-outline',              route: 'MyListings',       color: colors.primary,       roles: ['owner', 'both'] },
@@ -126,7 +125,7 @@ export default function ProfileHomeScreen({ navigation, onLogout }) {
         <View style={styles.avatarWrapper}>
           {user?.avatar ? (
             <Image
-              source={{ uri: `${BASE_URL}/${user.avatar}` }}
+              source={{ uri: imageUrl(user.avatar) }}
               style={styles.avatarImage}
             />
           ) : (

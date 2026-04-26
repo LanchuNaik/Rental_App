@@ -8,11 +8,11 @@ import {
   TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image,
 } from 'react-native';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getItemsApi, saveItemApi, unsaveItemApi } from '../../services/item.service';
+import { imageUrl } from '../../utils/imageUrl';
 
 export default function BrowseFeedScreen({ navigation, route }) {
   const [searchText,    setSearchText]    = useState('');
@@ -90,7 +90,7 @@ export default function BrowseFeedScreen({ navigation, route }) {
       <View style={styles.photo}>
         {item.images?.[0] ? (
           <Image
-            source={{ uri: `${BASE_URL}/${item.images[0]}` }}
+            source={{ uri: imageUrl(item.images[0]) }}
             style={styles.photoImage}
             resizeMode="cover"
           />

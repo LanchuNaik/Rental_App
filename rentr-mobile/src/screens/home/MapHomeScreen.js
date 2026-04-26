@@ -12,12 +12,12 @@ import {
   ScrollView, TextInput, StatusBar, Dimensions, Image,
 } from 'react-native';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
 import MapView, { Marker, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, shadows } from '../../theme/theme';
 import { getNearbyItemsApi } from '../../services/item.service';
+import { imageUrl } from '../../utils/imageUrl';
 import { CATEGORY_LABELS } from '../../constants/categories';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -187,7 +187,7 @@ export default function MapHomeScreen({ navigation }) {
                 <View style={styles.itemPhoto}>
                   {item.images?.[0] ? (
                     <Image
-                      source={{ uri: `${BASE_URL}/${item.images[0]}` }}
+                      source={{ uri: imageUrl(item.images[0]) }}
                       style={styles.itemPhotoImg}
                       resizeMode="cover"
                     />

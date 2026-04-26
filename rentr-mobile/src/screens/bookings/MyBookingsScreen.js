@@ -25,8 +25,7 @@ import {
   rejectBookingApi,
 } from '../../services/booking.service';
 import { getProfileApi } from '../../services/user.service';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '');
+import { imageUrl } from '../../utils/imageUrl';
 
 // ─── My Bookings helpers ───────────────────────────────────────────────────────
 const BOOKING_TABS = ['Upcoming', 'Active', 'Past', 'Cancelled'];
@@ -98,7 +97,7 @@ function BookingCard({ booking, onPress }) {
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.cardRow}>
         {firstImage ? (
-          <Image source={{ uri: `${BASE_URL}/${firstImage}` }} style={styles.photo} />
+          <Image source={{ uri: imageUrl(firstImage) }} style={styles.photo} />
         ) : (
           <View style={[styles.photoPlaceholder, { backgroundColor: '#BFDBFE' }]}>
             <Ionicons name="image-outline" size={28} color={colors.textMuted} />
