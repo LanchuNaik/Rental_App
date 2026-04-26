@@ -39,4 +39,7 @@ app.use("/api/bookings", bookingRoutes);
 const reviewRoutes = require("./modules/review/review.routes");
 app.use("/api/reviews", reviewRoutes);
 
+const chatRoutes = require("./modules/chat/chat.routes");
+app.use("/api/chat", chatRoutes);
+
 module.exports = app; // export app to be used in server.js
