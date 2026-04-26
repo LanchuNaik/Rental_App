@@ -99,40 +99,13 @@
 
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
 
 const authMiddleware = require("../../middleware/auth/middleware");
 const { getProfile, updateProfile, updateAvatar, deleteAvatar, getPublicProfile, updateRole } = require("./user.controller");
+const { makeUploader } = require("../../config/cloudinary");
 
-// --- Multer setup for avatar uploads ---
-// diskStorage tells multer WHERE to save files and WHAT to name them
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/avatars/");   // save files in this folder
-  },
-  filename: (req, file, cb) => {
-    // filename = userId + timestamp + original extension  e.g. "abc123_1713000000000.jpg"
-    const ext = path.extname(file.originalname);
-    cb(null, `${req.user.userId}_${Date.now()}${ext}`);
-  },
-});
-
-// fileFilter only allows image files
-const fileFilter = (req, file, cb) => {
-  const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);   // accept file
-  } else {
-    cb(new Error("Only jpg, png, and webp images are allowed"), false);  // reject file
-  }
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },  // 5MB max
-});
+// Avatar uploads → Cloudinary folder "rentr/avatars"
+const upload = makeUploader("avatars");
 
 // --- Routes ---
 router.get("/profile", authMiddleware, getProfile);
