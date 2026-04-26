@@ -42,4 +42,17 @@ app.use("/api/reviews", reviewRoutes);
 const chatRoutes = require("./modules/chat/chat.routes");
 app.use("/api/chat", chatRoutes);
 
+// Global error handler — catches errors from middleware (multer, multer-storage-cloudinary, etc.)
+// without it, those errors get logged as "[object Object]" and the client gets a generic 500.
+// Express identifies error middleware by its 4-argument signature (err, req, res, next).
+app.use((err, req, res, _next) => {
+  console.error("[error]", req.method, req.originalUrl, "→", err?.message || err);
+  if (err?.stack) console.error(err.stack);
+  const status = err?.status || err?.statusCode || 500;
+  res.status(status).json({
+    success: false,
+    message: err?.message || "Server error",
+  });
+});
+
 module.exports = app; // export app to be used in server.js
